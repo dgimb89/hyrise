@@ -45,6 +45,7 @@ build/perf_datagen
 build/perf_regression
 build/test_relation_eq
 build/dummy
+build/hyrise_server_allin
 
 docs/doxygen
 

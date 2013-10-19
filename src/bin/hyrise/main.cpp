@@ -19,6 +19,9 @@
 #include "net/AsyncConnection.h"
 #include "io/StorageManager.h"
 #include "taskscheduler/SharedScheduler.h"
+#include "taskscheduler/ThreadPerTaskScheduler.h"
+
+
 
 namespace po = boost::program_options;
 using namespace hyrise;
@@ -32,8 +35,9 @@ const size_t DEFAULT_PORT = 5000;
 // Global EBB Server instance
 static ebb_server server;
 
-LoggerPtr logger(Logger::getLogger("hyrise"));
-
+namespace {
+  LoggerPtr logger(Logger::getLogger("hyrise"));
+}
 
 /// To prevent multiple hyrise instances from using the same port
 /// we initialize

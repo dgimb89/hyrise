@@ -42,7 +42,7 @@ void AbstractCoreBoundQueue::launchThread(int core) {
     hwloc_obj_t obj;
     hwloc_topology_t topology = getHWTopology();
 
-    obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_CORE, core);
+    obj = hwloc_get_obj_by_type(topology, HWLOC_OBJ_PU, core);
     // the bitmap to modify
     cpuset = hwloc_bitmap_dup(obj->cpuset);
     // remove hyperthreads
