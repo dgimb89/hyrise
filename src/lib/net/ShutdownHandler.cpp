@@ -2,6 +2,9 @@
 #include <iostream>
 #include "net/AsyncConnection.h"
 #include "ebb/ebb.h"
+
+//#include <jemalloc/jemalloc.h>
+
 namespace hyrise {
 namespace net {
 
@@ -19,6 +22,9 @@ const std::string ShutdownHandler::vname() {
 
 void ShutdownHandler::operator()() {
   if (auto ac = dynamic_cast<AsyncConnection*>(_connection)) {
+
+    //malloc_stats_print(NULL, NULL, NULL);
+
     ac->respond("shutting down");
     ebb_server_unlisten(ac->connection->server);
   }

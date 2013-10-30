@@ -50,7 +50,7 @@ struct QueryParserFactory<T, parse_construct> : public AbstractQueryParserFactor
 
 template<typename T>
 struct QueryParserFactory<T, default_construct> : public AbstractQueryParserFactory {
-  virtual std::shared_ptr<PlanOperation> parse(Json::Value& data) {
+  virtual std::shared_ptr<PlanOperation> parse(const Json::Value& data) {
     typedef ::BasicParser<T> parser_t;
     return parser_t::parse(data);
   }

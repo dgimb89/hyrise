@@ -71,9 +71,10 @@ void RequestParseTask::operator()() {
   AbstractTaskScheduler *scheduler = SharedScheduler::getInstance().getScheduler();
 
   performance_vector_t& performance_data = _responseTask->getPerformanceData();
-  // the performance attribute for this operation (at [0])
-  performance_data.push_back(std::unique_ptr<performance_attributes_t>(new performance_attributes_t));
 
+
+
+  bool recordPerformance = false;
   std::vector<std::shared_ptr<Task> > tasks;
 
   int priority = Task::DEFAULT_PRIORITY;
@@ -108,6 +109,12 @@ void RequestParseTask::operator()() {
 
     if (ctx && reader.parse(query_string, request_data)) {
       _responseTask->setTxContext(*ctx);
+      recordPerformance = request_data["performance"].asBool();
+
+      // the performance attribute for this operation (at [0])
+      if (recordPerformance) {
+        performance_data.push_back(std::unique_ptr<performance_attributes_t>(new performance_attributes_t));
+      }
 
       LOG4CXX_DEBUG(_query_logger, request_data);
 
@@ -190,7 +197,12 @@ void RequestParseTask::operator()() {
 
   // high priority tasks are expected to be scheduled sequentially
   if(priority == Task::HIGH_PRIORITY){
-    *(performance_data.at(0)) = { 0, 0, "NO_PAPI", "RequestParseTask", "requestParse", _queryStart, get_epoch_nanoseconds(), boost::lexical_cast<std::string>(std::this_thread::get_id()) };
+    if (recordPerformance) {
+      *(performance_data.at(0)) = { 0, 0, "NO_PAPI", "RequestParseTask", 
+                                    "requestParse", _queryStart, get_epoch_nanoseconds(), 
+                                    boost::lexical_cast<std::string>(std::this_thread::get_id()) };
+    }
+
     int number_of_tasks = tasks.size();
     std::vector<bool> isExecuted(number_of_tasks, false);
     int executedTasks = 0;
@@ -211,7 +223,12 @@ void RequestParseTask::operator()() {
   } else {
     scheduler->schedule(_responseTask);
     scheduler->scheduleQuery(tasks);
-    *(performance_data.at(0)) = { 0, 0, "NO_PAPI", "RequestParseTask", "requestParse", _queryStart, get_epoch_nanoseconds(), boost::lexical_cast<std::string>(std::this_thread::get_id()) };
+
+    if (recordPerformance) {
+      *(performance_data.at(0)) = { 0, 0, "NO_PAPI", "RequestParseTask", "requestParse", 
+                                    _queryStart, get_epoch_nanoseconds(), 
+                                    boost::lexical_cast<std::string>(std::this_thread::get_id()) };
+    }
     _responseTask->setQueryStart(_queryStart);
     _responseTask.reset();  // yield responsibility
   }
