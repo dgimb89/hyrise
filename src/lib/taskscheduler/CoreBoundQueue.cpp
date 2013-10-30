@@ -14,7 +14,7 @@
 #include <sched.h>
 
 void CoreBoundQueue::executeTask() {
-
+  size_t retries = 0;
   //infinite thread loop
   while (1) {
     //block protected by _threadStatusMutex
@@ -31,6 +31,7 @@ void CoreBoundQueue::executeTask() {
       // get first task
       _runQueue.pop();
       ul.unlock();
+      retries = 0;
       if (task) {
         // set queue to _blocked as we run task; this is a simple mechanism to avoid that further tasks are pushed to this queue if a long running task is executed; check WSSimpleTaskScheduler for task stealing queue
         _blocked = true;
@@ -48,10 +49,17 @@ void CoreBoundQueue::executeTask() {
     else {
       //if queue still empty go to sleep and wait until new tasks have been arrived
       if (_runQueue.size() < 1) {
-        // if thread is about to stop, break execution loop
-        if(_status != RUN)
-          break;
-        _condition.wait(ul);      
+        
+        if (retries++ < 1000) {
+          ul.unlock();
+          if (retries > 300) 
+            std::this_thread::yield();
+        } else {
+          // if thread is about to stop, break execution loop
+          if(_status != RUN)
+            break;
+          _condition.wait(ul);      
+        }
       }
     }
   }
