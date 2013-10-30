@@ -198,7 +198,8 @@ void ResponseTask::operator()() {
     response["error"] = errors;
   }
 
-  connection->respond(response.toStyledString());
+  Json::FastWriter fw;
+  connection->respond(fw.write(response));
 }
 
 }

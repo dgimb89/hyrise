@@ -54,8 +54,8 @@ log4cxx::LoggerPtr _logger(log4cxx::Logger::getLogger("hyrise.access"));
 log4cxx::LoggerPtr _query_logger(log4cxx::Logger::getLogger("hyrise.access.queries"));
 }
 
-std::string hash(const Json::Value &v) {
-  const std::string jsonData(v.toStyledString());
+std::string hash(const std::string &v) {
+  const std::string& jsonData = v;
 
   std::array<unsigned char, 20> hash;
   SHA1_CTX ctx;
@@ -104,12 +104,14 @@ void RequestParseTask::operator()() {
     Json::Value request_data;
     Json::Reader reader;
 
-    if (ctx && reader.parse(urldecode(body_data["query"]), request_data)) {
+    const std::string& query_string = urldecode(body_data["query"]);
+
+    if (ctx && reader.parse(query_string, request_data)) {
       _responseTask->setTxContext(*ctx);
 
       LOG4CXX_DEBUG(_query_logger, request_data);
 
-      std::string final_hash = hash(request_data);
+      const std::string& final_hash = hash(query_string);
       std::shared_ptr<Task> result = nullptr;
 
       if(request_data.isMember("priority"))

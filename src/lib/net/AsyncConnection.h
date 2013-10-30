@@ -31,9 +31,6 @@ class AsyncConnection : public AbstractConnection {
   char *body;
   size_t body_len;
 
-  char *response;
-  size_t response_length;
-
   char *write_buffer;
   size_t write_buffer_len;
 
