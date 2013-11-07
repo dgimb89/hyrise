@@ -23,3 +23,4 @@ Hyrise.config
 Hyrise.creator
 Hyrise.files
 Hyrise.includes
+*.user
