@@ -18,3 +18,8 @@ coverage.xml
 sloccount.sc
 
 benchmark_data
+
+Hyrise.config
+Hyrise.creator
+Hyrise.files
+Hyrise.includes
