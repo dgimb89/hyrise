@@ -7,6 +7,7 @@
 #include <access.h>
 #include <helper/types.h>
 #include <storage.h>
+#include <access/MergeHashTables.h>
 
 #include <io.h>
 #include <io/shortcuts.h>
@@ -325,6 +326,60 @@ TEST_F(GroupByTests, group_by_scan_with_count) {
   hs.setKey("groupby");
 
   auto group_map = hs.execute()->getResultHashTable();
+  gs.addInput(group_map);
+
+  const auto& result = gs.execute()->getResultTable();
+  const auto& reference = Loader::shortcuts::load("test/reference/group_by_scan_with_count.tbl");
+
+  SortScan so;
+  so.addInput(result);
+  so.setSortField(0);
+  const auto& r2 = so.execute()->getResultTable();
+
+  SortScan so2;
+  so2.addInput(reference);
+  so2.setSortField(0);
+  const auto& ref2 = so2.execute()->getResultTable();
+
+  ASSERT_TABLE_EQUAL(r2, ref2);
+
+}
+
+TEST_F(GroupByTests, group_by_scan_parallelized) {
+  hyrise::storage::atable_ptr_t t = Loader::shortcuts::load("test/10_30_group.tbl");
+
+  auto count = new CountAggregateFun(0);
+
+  hyrise::access::GroupByScan gs;
+  gs.addInput(t);
+  gs.addFunction(count);
+  gs.addField(0);
+
+  hyrise::access::HashBuild hb1;
+  hb1.addInput(t);
+  hb1.addField(0);
+  hb1.setKey("groupby");
+  hb1.setCount(2);
+  hb1.setPart(0);
+  hb1.execute();
+
+  hyrise::access::HashBuild hb2;
+  hb2.addInput(t);
+  hb2.addField(0);
+  hb2.setKey("groupby");
+  hb2.setCount(2);
+  hb2.setPart(1);
+  hb2.execute();
+
+  auto hash1 = std::dynamic_pointer_cast<const SingleAggregateHashTable >(hb1.getResultHashTable());
+  auto hash2 = std::dynamic_pointer_cast<const SingleAggregateHashTable >(hb2.getResultHashTable());
+
+  hyrise::access::MergeHashTables mht;
+  mht.addInput(hash1);
+  mht.addInput(hash2);
+  mht.setKey("groupby");
+
+  auto group_map = mht.execute()->getResultHashTable();
   gs.addInput(group_map);
 
   const auto& result = gs.execute()->getResultTable();
