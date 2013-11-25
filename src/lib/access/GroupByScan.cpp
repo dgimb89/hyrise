@@ -3,6 +3,7 @@
 
 #include "access/system/QueryParser.h"
 #include "storage/ColumnMetadata.h"
+#include "storage/DictionaryFactory.h"
 #include "storage/HashTable.h"
 #include "storage/PointerCalculator.h"
 #include "storage/OrderIndifferentDictionary.h"
@@ -97,7 +98,7 @@ void GroupByScan::executePlanOperation() {
   }
 }
 
-std::shared_ptr<PlanOperation> GroupByScan::parse(Json::Value &v) {
+std::shared_ptr<PlanOperation> GroupByScan::parse(const Json::Value &v) {
   std::shared_ptr<GroupByScan> gs = std::make_shared<GroupByScan>();
 
   if (v.isMember("fields")) {
@@ -133,7 +134,7 @@ storage::atable_ptr_t GroupByScan::createResultTableLayout() {
   for (const auto & fun: _aggregate_functions) {
     ColumnMetadata *m = new ColumnMetadata(fun->columnName(), fun->getType());
     metadata.push_back(m);
-    dictionaries.push_back(AbstractDictionary::dictionaryWithType<DictionaryFactory<OrderIndifferentDictionary> >(fun->getType()));
+    dictionaries.push_back(storage::makeDictionary<OrderIndifferentDictionary>(fun->getType()));
   }
   storage::atable_ptr_t agg_tab = std::make_shared<Table>(&metadata, &dictionaries, 0, false);
 

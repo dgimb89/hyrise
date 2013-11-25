@@ -21,8 +21,7 @@ void MergeTable::executePlanOperation() {
   // Add all tables to the game
   for (auto& table: input.getTables()) {
     if (auto store = std::dynamic_pointer_cast<const storage::Store>(table)) {
-      auto mains = store->getMainTables();
-      tables.insert(tables.end(), mains.begin(), mains.end());
+      tables.push_back(store->getMainTable());
       tables.push_back(store->getDeltaTable());
     } else {
       tables.push_back(table);
@@ -40,7 +39,7 @@ void MergeTable::executePlanOperation() {
   output.add(result);
 }
 
-std::shared_ptr<PlanOperation> MergeTable::parse(Json::Value& data) {
+std::shared_ptr<PlanOperation> MergeTable::parse(const Json::Value& data) {
   return std::make_shared<MergeTable>();
 }
 
@@ -62,7 +61,7 @@ void MergeStore::executePlanOperation() {
   addResult(store);
 }
 
-std::shared_ptr<PlanOperation> MergeStore::parse(Json::Value& data) {
+std::shared_ptr<PlanOperation> MergeStore::parse(const Json::Value& data) {
   return std::make_shared<MergeStore>();
 }
 

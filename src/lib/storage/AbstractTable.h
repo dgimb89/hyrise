@@ -12,11 +12,13 @@
 #include <memory>
 #include <stdexcept>
 
+#include <functional>
 #include <vector>
 #include <string>
 
 #include "helper/types.h"
 #include "helper/locking.h"
+#include "helper/checked_cast.h"
 #include "helper/unique_id.h"
 
 #include "storage/AbstractResource.h"
@@ -92,6 +94,15 @@ public:
    */
   virtual hyrise::storage::atable_ptr_t copy_structure_modifiable(const field_list_t *fields = nullptr, size_t initial_size = 0, bool with_containers = true) const;
 
+  typedef std::function<std::shared_ptr<AbstractDictionary>(DataType)> abstract_dictionary_callback;
+  typedef std::function<std::shared_ptr<AbstractAttributeVector>(std::size_t)> abstract_attribute_vector_callback;
+
+  /**
+   * Copy structure with factory functions to replace attribute vectors and dictionaries
+   * in `Table` instances. May need future enhancement for more fine-grained replacement
+   * (i.e. per column or per main/delta or per partition).
+   */
+  virtual hyrise::storage::atable_ptr_t copy_structure(abstract_dictionary_callback, abstract_attribute_vector_callback) const { throw std::runtime_error("not implemented"); }
 
   /**
    * Get the value-IDs for a certain row.
@@ -281,7 +292,7 @@ public:
     // FIXME here should be some basic type checking, at least we should check with a better cast and catch the std::exception
     // FIXME horizontal containers will go down here, needs a row index, can be default 0
 
-    const auto& map = std::dynamic_pointer_cast<BaseDictionary<T>>(dictionaryAt(column, 0, table_id));
+    const auto& map = checked_pointer_cast<BaseDictionary<T>>(dictionaryAt(column, 0, table_id));
     ValueId valueId;
     valueId.table = table_id;
 
@@ -318,7 +329,7 @@ public:
     // FIXME here should be some basic type checking, at least we should check with a better cast and catch the std::exception
     // FIXME horizontal containers will go down here, needs a row index, can be default 0
 
-    const auto& map = std::dynamic_pointer_cast<BaseDictionary<T>>(dictionaryByTableId(column, table_id));
+    const auto& map = checked_pointer_cast<BaseDictionary<T>>(dictionaryByTableId(column, table_id));
     ValueId valueId;
     valueId.table = table_id;
 
@@ -347,7 +358,7 @@ public:
    */
   template<typename T>
   inline bool valueExists(const field_t column, const T value, const table_id_t table_id = 0) const {
-    const auto& map = std::dynamic_pointer_cast<BaseDictionary<T>>(dictionaryAt(column, 0, table_id));
+    const auto& map = checked_pointer_cast<BaseDictionary<T>>(dictionaryAt(column, 0, table_id));
     return map->valueExists(value);
   }
 
@@ -360,7 +371,7 @@ public:
    */
   template <typename T>
   void setValue(size_t column, size_t row, const T &value) {
-    const auto& map = std::dynamic_pointer_cast<BaseDictionary<T>>(dictionaryAt(column, row));
+    const auto& map = checked_pointer_cast<BaseDictionary<T>>(dictionaryAt(column, row));
 
     ValueId valueId;
     valueId.table = 0;
