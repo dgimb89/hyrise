@@ -3,6 +3,7 @@ build/*
 test/dump
 docs/doxygen
 docs/_html
+doc_env/*
 
 *.DS_Store
 *.log

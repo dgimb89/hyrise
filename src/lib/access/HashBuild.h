@@ -11,7 +11,7 @@ class HashBuild : public ParallelizablePlanOperation {
 public:
   virtual ~HashBuild();
 
-  void executePlanOperation();
+  virtual void executePlanOperation();
   /// {
   ///     "operators": {
   ///         "0": {
@@ -31,7 +31,7 @@ public:
   void setKey(const std::string &key);
   const std::string getKey() const;
 
-private:
+protected:
   std::string _key;
 };
 

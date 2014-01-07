@@ -2,7 +2,6 @@
 #include "access/HashBuild.h"
 
 #include "storage/HashTable.h"
-#include "storage/SharedHashTable.h"
 #include "storage/TableRangeView.h"
 
 namespace hyrise {
@@ -26,11 +25,6 @@ void HashBuild::executePlanOperation() {
         addResult(std::make_shared<SingleAggregateHashTable>(getInputTable(), _field_definition, row_offset));
       else
         addResult(std::make_shared<AggregateHashTable>(getInputTable(), _field_definition, row_offset));
-  } else if (_key == "groupby_shared") {
-    if (_field_definition.size() == 1)
-        ; // todo shared ht
-    else
-        ; // todo shared ht
   } else if (_key == "join") {
     if (_field_definition.size() == 1)
       addResult(std::make_shared<SingleJoinHashTable>(getInputTable(), _field_definition, row_offset));

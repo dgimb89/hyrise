@@ -42,8 +42,6 @@ class HashTableBase : public AbstractHashTable {
 public:
     typedef KEY key_t;
     typedef MAP map_t;
-    typedef typename map_t::const_iterator map_const_iterator_t;
-    typedef decltype(std::declval<const map_t>().equal_range(key_t())) map_const_range_t;
 
 protected:
   // Underlaying storage type
@@ -67,25 +65,6 @@ public:
 
   virtual ~HashTableBase() {}
 
-  /// Returns the number of key value pairs of underlying hash map structure.
-  virtual size_t size() const {
-      return _map.size();
-    }
-
-  /// Get positions for values in the table cells of given row and columns.
-  virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
-                         const field_list_t &columns,
-                         const pos_t row) const {
-      key_t key = MAP::hasher::getGroupKey(table, columns, columns.size(), row);
-      auto range = _map.equal_range(key);
-      return constructPositions(range);
-    }
-
-  virtual pos_list_t get(const key_t &key) const {
-    auto range = _map.equal_range(key);
-    return constructPositions(range);
-  }
-
   virtual hyrise::storage::c_atable_ptr_t getTable() const {
       return _table;
     }
@@ -97,33 +76,6 @@ public:
   virtual size_t getFieldCount() const {
       return _fields.size();
     }
-
-  virtual uint64_t numKeys() const {
-      if (_dirty) {
-        uint64_t result = 0;
-        for (map_const_iterator_t it1 = _map.begin(), it2 = it1, end = _map.end(); it1 != end; it1 = it2) {
-          for (; (it2 != end) && (it1->first == it2->first); ++it2) {}
-          ++result;
-        }
-
-        _numKeys = result;
-        _dirty = false;
-      }
-      return _numKeys;
-    }
-private:
-  pos_list_t constructPositions(const map_const_range_t &range) const {
-    return constructPositions(range.first, range.second);
-  }
-
-  pos_list_t constructPositions(const map_const_iterator_t &begin,  const map_const_iterator_t &end) const {
-    pos_list_t positions(std::distance(begin, end));
-    // decltype(*range.first) returns the type of iterator elements
-    std::transform(begin, end, positions.begin(), [&](decltype(*begin)& value) {
-      return value.second;
-    });
-    return positions;
-  }
 };
 
 #endif  // SRC_LIB_STORAGE_ABSTRACTHASHTABLE_H_

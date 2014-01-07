@@ -152,6 +152,19 @@ private:
     }
   }
 
+  pos_list_t constructPositions(const map_const_range_t &range) const {
+    return constructPositions(range.first, range.second);
+  }
+
+  pos_list_t constructPositions(const map_const_iterator_t &begin,  const map_const_iterator_t &end) const {
+    pos_list_t positions(std::distance(begin, end));
+    // decltype(*range.first) returns the type of iterator elements
+    std::transform(begin, end, positions.begin(), [&](decltype(*begin)& value) {
+      return value.second;
+    });
+    return positions;
+  }
+
 public:
   HashTable() {}
 
@@ -197,6 +210,39 @@ public:
   map_t &getMap() {
     return base_t::_map;
   }
+
+  /// Returns the number of key value pairs of underlying hash map structure.
+  virtual size_t size() const {
+      return base_t::_map.size();
+    }
+
+  /// Get positions for values in the table cells of given row and columns.
+  virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
+                         const field_list_t &columns,
+                         const pos_t row) const {
+      key_t key = MAP::hasher::getGroupKey(table, columns, columns.size(), row);
+      auto range = base_t::_map.equal_range(key);
+      return constructPositions(range);
+    }
+
+  virtual pos_list_t get(const key_t &key) const {
+    auto range = base_t::_map.equal_range(key);
+    return constructPositions(range);
+  }
+
+  virtual uint64_t numKeys() const {
+      if (base_t::_dirty) {
+        uint64_t result = 0;
+        for (map_const_iterator_t it1 = base_t::_map.begin(), it2 = it1, end = base_t::_map.end(); it1 != end; it1 = it2) {
+          for (; (it2 != end) && (it1->first == it2->first); ++it2) {}
+          ++result;
+        }
+
+        base_t::_numKeys = result;
+        base_t::_dirty = false;
+      }
+      return base_t::_numKeys;
+    }
 };
 
 /// Maps table cells' hashed values of arbitrary columns to their rows.
