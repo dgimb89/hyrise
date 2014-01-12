@@ -14,30 +14,35 @@ namespace {
 SharedHashBuild::~SharedHashBuild() {
 }
 
-void SharedHashBuild::executePlanOperation() {
-  size_t row_offset = 0;
-  // check if table is a TableRangeView; if yes, provide the offset to HashTable
-  auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
-  if(input)
-    row_offset = input->getStart();
 
-  if(_key == "groupby") {
-    if (_field_definition.size() == 1)
-        addResult(std::make_shared<SingleAggregateLockingSharedHashTable>(getInputTable(), _field_definition, row_offset));
-    else
-        addResult(std::make_shared<AggregateLockingSharedHashTable>(getInputTable(), _field_definition, row_offset));
-  } /*else if(_key == "groupby_atomic") {
-    if (_field_definition.size() == 1)
-        addResult(std::make_shared<SingleAggregateAtomicSharedHashTable>(getInputTable(), _field_definition, row_offset));
-    else
-        addResult(std::make_shared<AggregateAtomicSharedHashTable>(getInputTable(), _field_definition, row_offset));
-  } */ else {
-    throw std::runtime_error("Type in Plan operation SharedHashBuild not supported; key: " + _key);
-  }
+
+void SharedHashBuild::executePlanOperation() {
+    size_t row_offset = 0;
+    if(!getMap()) throw std::runtime_error("SharedHashBuild can not run without defined map container");
+
+    // check if table is a TableRangeView; if yes, provide the offset to HashTable
+    auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
+    if(input)
+        row_offset = input->getStart();
+
+    // map / key type tuple already determinated in SharedHashGenerator, take given one
+    if(_preferAtomic) {
+        addResult(std::make_shared<AtomicSharedHashTable<map_t, key_t>(getInputTable(), _field_definition, _map, row_offset));
+    } else {
+        addResult(std::make_shared<SharedHashTable<map_t, key_t>(getInputTable(), _field_definition, _map, row_offset));
+    }
 }
 
 const std::string SharedHashBuild::vname() {
-  return "SharedHashBuild";
+    return "SharedHashBuild";
+}
+
+void SharedHashBuild::setMap(SharedHashBuild::map_ptr_t map) {
+    _map = map;
+}
+
+SharedHashBuild::map_ptr_t SharedHashBuild::getMap() {
+    return _map;
 }
 
 }

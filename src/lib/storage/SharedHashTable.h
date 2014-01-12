@@ -5,16 +5,16 @@
 #include <mutex>
 
 
-template<class MAP, class KEY> class LockingSharedHashTable;
+template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY> class AtomicSharedHashTable;
 
 /// HashTable based on a map; key specifies the key for the given map
-typedef LockingSharedHashTable<aggregate_hash_map_t, aggregate_key_t> AggregateLockingSharedHashTable;
-typedef LockingSharedHashTable<join_hash_map_t, join_key_t> JoinLockingSharedHashTable;
+typedef SharedHashTable<aggregate_hash_map_t, aggregate_key_t> AggregateLockingSharedHashTable;
+typedef SharedHashTable<join_hash_map_t, join_key_t> JoinLockingSharedHashTable;
 
 /// HashTables for single values
-typedef LockingSharedHashTable<aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateLockingSharedHashTable;
-typedef LockingSharedHashTable<join_single_hash_map_t, join_single_key_t> SingleJoinLockingSharedHashTable;
+typedef SharedHashTable<aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateLockingSharedHashTable;
+typedef SharedHashTable<join_single_hash_map_t, join_single_key_t> SingleJoinLockingSharedHashTable;
 
 /// HashTable based on a map; key specifies the key for the given map
 typedef AtomicSharedHashTable<aggregate_hash_map_t, aggregate_key_t> AggregateAtomicSharedHashTable;
@@ -108,13 +108,13 @@ private:
 };
 
 template <class MAP, class KEY>
-class LockingSharedHashTable : public AbstractSharedHashTable<MAP, KEY> {
+class SharedHashTable : public AbstractSharedHashTable<MAP, KEY> {
 public:
     typedef AbstractSharedHashTable<MAP,KEY> base_t;
     typedef KEY key_t;
     typedef MAP map_t;
 
-    LockingSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, size_t row_offset = 0)
+    SharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, size_t row_offset = 0)
         : base_t(t, f, nullptr) {
     }
 protected:
