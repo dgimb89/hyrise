@@ -15,7 +15,7 @@ TEST_F(SharedHashBuildTests, shared_hash_build_vname_test) {
 }
 
 TEST_F(SharedHashBuildTests, basic_shared_hash_build_for_groupby_test) {
-  auto t = Loader::shortcuts::load("test/10_30_group.tbl");
+  /*auto t = Loader::shortcuts::load("test/10_30_group.tbl");
 
   SharedHashBuild hb;
   hb.addInput(t);
@@ -25,12 +25,12 @@ TEST_F(SharedHashBuildTests, basic_shared_hash_build_for_groupby_test) {
 
   const auto &result = std::dynamic_pointer_cast<const SingleAggregateLockingSharedHashTable>(hb.getResultHashTable());
 
-  ASSERT_NE(result.get(), (SingleAggregateLockingSharedHashTable *) nullptr);
+  ASSERT_NE(result.get(), (SingleAggregateLockingSharedHashTable *) nullptr);*/
 }
 
 TEST_F(SharedHashBuildTests, parrallel_shared_hash_build_operate_on_same_map_test) {
-    SharedHashBuild hb1;
-    hb1.setCount(2);
+    /*SharedHashBuild hb1;
+    hb1.setCount(2);*/
 }
 
 }

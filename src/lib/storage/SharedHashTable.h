@@ -24,8 +24,13 @@ typedef AtomicSharedHashTable<join_hash_map_t, join_key_t> JoinAtomicSharedHashT
 typedef AtomicSharedHashTable<aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateAtomicSharedHashTable;
 typedef AtomicSharedHashTable<join_single_hash_map_t, join_single_key_t> SingleJoinAtomicSharedHashTable;
 
+class AbstractSharedHashTable {
+public:
+    virtual void populateMap() = 0;
+};
+
 template <class MAP, class KEY>
-class AbstractSharedHashTable : public HashTableBase<std::shared_ptr<MAP>,KEY>, public std::enable_shared_from_this<AbstractSharedHashTable<MAP,KEY>> {
+class SharedHashTableBase : public HashTableBase<std::shared_ptr<MAP>,KEY>, public AbstractSharedHashTable, public std::enable_shared_from_this<SharedHashTableBase<MAP,KEY>> {
 public:
     typedef HashTableBase<std::shared_ptr<MAP>,KEY> base_t;
     typedef KEY key_t;
@@ -34,14 +39,14 @@ public:
     typedef typename map_t::const_iterator map_const_iterator_t;
     typedef decltype(std::declval<const MAP>().equal_range(key_t())) map_const_range_t;
 
-    AbstractSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, unsigned row_offset = 0)
-        : AbstractSharedHashTable(t, f, nullptr, row_offset) {
+    SharedHashTableBase(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, unsigned row_offset = 0)
+        : SharedHashTableBase(t, f, nullptr, row_offset) {
     }
 
-    AbstractSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
+    SharedHashTableBase(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
         : base_t(t, f) {
         setMap(map_ptr);
-        this->populate_map(row_offset);
+        setRowOffset(row_offset);
     }
 
     map_ptr_t getMap() {
@@ -88,9 +93,12 @@ public:
         return base_t::_numKeys;
       }
 
+    void setRowOffset(size_t rowOffset) {
+        m_rowOffset = rowOffset;
+    }
+
 protected:
-    // populates map with values
-    virtual void populate_map(size_t row_offset) {}
+    size_t m_rowOffset;
 
 private:
     pos_list_t constructPositions(const map_const_range_t &range) const {
@@ -108,30 +116,30 @@ private:
 };
 
 template <class MAP, class KEY>
-class SharedHashTable : public AbstractSharedHashTable<MAP, KEY> {
+class SharedHashTable : public SharedHashTableBase<MAP, KEY> {
 public:
-    typedef AbstractSharedHashTable<MAP,KEY> base_t;
+    typedef SharedHashTableBase<MAP,KEY> base_t;
     typedef KEY key_t;
     typedef MAP map_t;
 
     SharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, size_t row_offset = 0)
         : base_t(t, f, nullptr) {
     }
-protected:
-    virtual void populate_map(size_t row_offset) {
+public:
+    virtual void populateMap() {
         base_t::_dirty = true;
         size_t fieldSize = base_t::_fields.size();
         size_t tableSize = base_t::_table->size();
         typename base_t::map_ptr_t map = base_t::getMap();
         for (pos_t row = 0; row < tableSize; ++row) {
             key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
-            map->insert(typename map_t::value_type(key, row + row_offset));
+            map->insert(typename map_t::value_type(key, row + base_t::m_rowOffset));
         }
     }
 };
 
 template <class MAP, class KEY>
-class AtomicSharedHashTable : public AbstractSharedHashTable<MAP, KEY> {
+class AtomicSharedHashTable : public SharedHashTableBase<MAP, KEY> {
 
 };
 

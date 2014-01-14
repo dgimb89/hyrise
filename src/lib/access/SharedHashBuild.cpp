@@ -1,25 +1,38 @@
 // Copyright (c) 2012 Hasso-Plattner-Institut fuer Softwaresystemtechnik GmbH. All rights reserved.
 
 #include "access/SharedHashBuild.h"
-#include "storage/SharedHashTable.h"
 #include "storage/TableRangeView.h"
+#include <memory>
 
 namespace hyrise {
 namespace access {
 
 namespace {
-  auto _ = QueryParser::registerPlanOperation<HashBuild>("SharedHashBuild");
+  auto _ = QueryParser::registerPlanOperation<SharedHashBuild>("SharedHashBuild");
 }
 
 SharedHashBuild::~SharedHashBuild() {
 }
 
-
-
 void SharedHashBuild::executePlanOperation() {
-    size_t row_offset = 0;
-    if(!getMap()) throw std::runtime_error("SharedHashBuild can not run without defined map container");
+    if(!_hashTable)
+        std::runtime_error("Failed converting given HashTable to SharedHashTable");
 
+    _hashTable->populateMap();
+}
+
+const std::string SharedHashBuild::vname() {
+    return "SharedHashBuild";
+}
+
+void SharedHashBuild::setKey(const std::string &key) {
+    // TODO: not yet implemented
+    // only works for groupby yet
+}
+
+template <template <typename, typename> class MAP_CONTAINER, typename KEY, typename VALUE>
+void SharedHashBuild::setMap(std::shared_ptr<MAP_CONTAINER<KEY, VALUE>> map) {
+    const size_t row_offset = 0;
     // check if table is a TableRangeView; if yes, provide the offset to HashTable
     auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
     if(input)
@@ -27,22 +40,23 @@ void SharedHashBuild::executePlanOperation() {
 
     // map / key type tuple already determinated in SharedHashGenerator, take given one
     if(_preferAtomic) {
-        addResult(std::make_shared<AtomicSharedHashTable<map_t, key_t>(getInputTable(), _field_definition, _map, row_offset));
+        auto hashTable = std::make_shared<AtomicSharedHashTable<MAP_CONTAINER<KEY,VALUE>, KEY>>(getInputTable(), _field_definition, map, row_offset);
+        addResult(hashTable);
+        setHashTable(hashTable);
     } else {
-        addResult(std::make_shared<SharedHashTable<map_t, key_t>(getInputTable(), _field_definition, _map, row_offset));
+        auto hashTable = std::make_shared<SharedHashTable<MAP_CONTAINER<KEY,VALUE>, KEY>>(getInputTable(), _field_definition, map, row_offset);
+        addResult(hashTable);
+        setHashTable(hashTable);
     }
 }
 
-const std::string SharedHashBuild::vname() {
-    return "SharedHashBuild";
+std::shared_ptr<PlanOperation> SharedHashBuild::parse(const Json::Value &data) {
+    std::shared_ptr<PlanOperation> instance = BasicParser<SharedHashBuild>::parse(data);
+    return instance;
 }
 
-void SharedHashBuild::setMap(SharedHashBuild::map_ptr_t map) {
-    _map = map;
-}
-
-SharedHashBuild::map_ptr_t SharedHashBuild::getMap() {
-    return _map;
+void SharedHashBuild::setHashTable(std::shared_ptr<AbstractSharedHashTable> hashTable) {
+    _hashTable = hashTable;
 }
 
 }
