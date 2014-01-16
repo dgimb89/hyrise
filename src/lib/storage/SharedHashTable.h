@@ -8,22 +8,6 @@
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY> class AtomicSharedHashTable;
 
-/// HashTable based on a map; key specifies the key for the given map
-typedef SharedHashTable<aggregate_hash_map_t, aggregate_key_t> AggregateLockingSharedHashTable;
-typedef SharedHashTable<join_hash_map_t, join_key_t> JoinLockingSharedHashTable;
-
-/// HashTables for single values
-typedef SharedHashTable<aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateLockingSharedHashTable;
-typedef SharedHashTable<join_single_hash_map_t, join_single_key_t> SingleJoinLockingSharedHashTable;
-
-/// HashTable based on a map; key specifies the key for the given map
-typedef AtomicSharedHashTable<aggregate_hash_map_t, aggregate_key_t> AggregateAtomicSharedHashTable;
-typedef AtomicSharedHashTable<join_hash_map_t, join_key_t> JoinAtomicSharedHashTable;
-
-/// HashTables for single values
-typedef AtomicSharedHashTable<aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateAtomicSharedHashTable;
-typedef AtomicSharedHashTable<join_single_hash_map_t, join_single_key_t> SingleJoinAtomicSharedHashTable;
-
 class AbstractSharedHashTable {
 public:
     virtual void populateMap() = 0;
@@ -94,11 +78,11 @@ public:
       }
 
     void setRowOffset(size_t rowOffset) {
-        m_rowOffset = rowOffset;
+        _rowOffset = rowOffset;
     }
 
 protected:
-    size_t m_rowOffset;
+    size_t _rowOffset;
 
 private:
     pos_list_t constructPositions(const map_const_range_t &range) const {
@@ -121,11 +105,12 @@ public:
     typedef SharedHashTableBase<MAP,KEY> base_t;
     typedef KEY key_t;
     typedef MAP map_t;
+    typedef std::shared_ptr<MAP> map_ptr_t;
 
-    SharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, size_t row_offset = 0)
-        : base_t(t, f, nullptr) {
+    SharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
+        : base_t(t, f, map_ptr, row_offset) {
     }
-public:
+
     virtual void populateMap() {
         base_t::_dirty = true;
         size_t fieldSize = base_t::_fields.size();
@@ -133,14 +118,26 @@ public:
         typename base_t::map_ptr_t map = base_t::getMap();
         for (pos_t row = 0; row < tableSize; ++row) {
             key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
-            map->insert(typename map_t::value_type(key, row + base_t::m_rowOffset));
+            map->insert(typename map_t::value_type(key, row + base_t::_rowOffset));
         }
     }
 };
 
 template <class MAP, class KEY>
 class AtomicSharedHashTable : public SharedHashTableBase<MAP, KEY> {
+public:
+    typedef SharedHashTableBase<MAP,KEY> base_t;
+    typedef KEY key_t;
+    typedef MAP map_t;
+    typedef std::shared_ptr<MAP> map_ptr_t;
 
+    AtomicSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
+        : base_t(t, f, map_ptr, row_offset) {
+    }
+
+    virtual void populateMap() {
+        std::runtime_error("not yet implemented");
+    }
 };
 
 #endif // SRC_LIB_STORAGE_SHAREDHASHTABLE_H

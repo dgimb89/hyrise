@@ -9,12 +9,18 @@ namespace access {
 class SharedHashTableGenerator : public PlanOperation {
 public:
     void executePlanOperation();
-    static std::shared_ptr<PlanOperation> parse(const Json::Value &data);
     const std::string vname();
-    void setNumberOfSpawns(const size_t number);
 
-private:
-    size_t m_numberOfSpawns;
+    void setNumberOfSpawns(const size_t number);
+    size_t getNumberOfSpawns();
+
+    void setKey(const std::string &key);
+
+    static std::shared_ptr<PlanOperation> parse(const Json::Value &data);
+
+protected:
+    std::string _key;
+    size_t _numberOfSpawns;
 };
 
 }

@@ -3,6 +3,7 @@
 
 #include "access/HashBuild.h"
 #include "storage/SharedHashTable.h"
+#include "storage/TableRangeView.h"
 
 namespace hyrise {
 namespace access {
@@ -14,9 +15,27 @@ public:
     virtual void executePlanOperation();
     virtual const std::string vname();
 
-    template <template <typename, typename> class MAP_CONTAINER, typename KEY, typename VALUE>
-    void setMap(std::shared_ptr<MAP_CONTAINER<KEY, VALUE>> map);
-    void setKey(const std::string &key);
+    template <typename MAP, typename KEY>
+    std::shared_ptr<AbstractHashTable> setMap(std::shared_ptr<MAP> map) {
+        size_t row_offset = 0;
+        // check if table is a TableRangeView; if yes, provide the offset to HashTable
+        auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
+        if(input)
+            row_offset = input->getStart();
+
+        // map / key type tuple already determinated in SharedHashGenerator, take given one
+        if(_preferAtomic) {
+            auto hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+            addResult(hashTable);
+            setHashTable(hashTable);
+            return hashTable;
+        } else {
+            auto hashTable = std::make_shared<SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+            addResult(hashTable);
+            setHashTable(hashTable);
+            return hashTable;
+        }
+    }
 
     static std::shared_ptr<PlanOperation> parse(const Json::Value& data);
 protected:
