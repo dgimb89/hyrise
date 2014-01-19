@@ -12,7 +12,6 @@ namespace {
 }
 
 void SharedHashTableGenerator::executePlanOperation() {
-
     std::vector<std::shared_ptr<SharedHashBuild>> children;
     std::vector<std::shared_ptr<Task>> successors;
     auto scheduler = SharedScheduler::getInstance().getScheduler();
@@ -37,7 +36,9 @@ void SharedHashTableGenerator::executePlanOperation() {
             child->addField(field);
 
         children.push_back(child);
-        getResponseTask()->registerPlanOperation(children[i]);
+        auto r = getResponseTask();
+        if(r != nullptr)
+            r->registerPlanOperation(children[i]);
 
       for (auto successor : successors)
         successor->addDependency(children[i]);
@@ -76,9 +77,19 @@ void SharedHashTableGenerator::setKey(const std::string &key) {
 }
 
 std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value &data) {
-  auto planOp = std::make_shared<SharedHashTableGenerator>();
-  planOp->setNumberOfSpawns(data["instances"].asInt());
-  return planOp;
+  auto instance = std::make_shared<SharedHashTableGenerator>();
+  if (data.isMember("numCores")) {
+      instance->setNumberOfSpawns(data["numCores"].asInt());
+  }
+  if (data.isMember("fields")) {
+    for (unsigned i = 0; i < data["fields"].size(); ++i) {
+      instance->addField(data["fields"][i]);
+    }
+  }
+  if (data.isMember("key")) {
+    instance->setKey(data["key"].asString());
+  }
+  return instance;
 }
 
 const std::string SharedHashTableGenerator::vname() {

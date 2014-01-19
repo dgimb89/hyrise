@@ -25,12 +25,12 @@ public:
 
         // map / key type tuple already determinated in SharedHashGenerator, take given one
         if(_preferAtomic) {
-            auto hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+            auto hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY> >(getInputTable(), _indexed_field_definition, map, row_offset);
             addResult(hashTable);
             setHashTable(hashTable);
             return hashTable;
         } else {
-            auto hashTable = std::make_shared<SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+            auto hashTable = std::make_shared<SharedHashTable<MAP,KEY> >(getInputTable(), _indexed_field_definition, map, row_offset);
             addResult(hashTable);
             setHashTable(hashTable);
             return hashTable;

@@ -1,0 +1,22 @@
+{
+    "operators": {
+        "-1": {
+            "type": "TableLoad",
+            "table": "reference",
+            "filename": "tables/employees_per_company_id.tbl"
+        },
+        "0": {
+            "type": "TableLoad",
+            "table": "employees",
+            "filename": "tables/employees.tbl"
+        },
+
+        "1": {
+            "type": "SharedHashTableGenerator",
+	    "numCores": 4,
+            "fields": ["employee_company_id"],
+	    "key": "groupby"
+        }
+    },
+    "edges" : [["0", "1"]]
+}
