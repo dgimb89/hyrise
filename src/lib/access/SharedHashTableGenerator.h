@@ -2,9 +2,38 @@
 #define SRC_LIB_ACCESS_SHAREDHASHTABLEGENERATOR_H
 
 #include "access/SharedHashBuild.h"
+#include <tbb/concurrent_unordered_map.h>
 
 namespace hyrise {
 namespace access {
+
+/* template <typename K>
+struct SingleKeyHashCompare {
+    static size_t hash( const K& key) {
+        return SingleGroupKeyHash<K>(key);
+    }
+
+    static bool equal( const K& key1, const K& key2 ) {
+        return key1 == key2;
+    }
+};
+
+template <typename K>
+struct GroupKeyHashCompare {
+    static size_t hash( const K& key) {
+        return GroupKeyHash<K>(key);
+    }
+
+    // equal if all values are equal
+    static bool equal(const K& key1, const K& key2) {
+        return key1 == key2;
+    }
+}; */
+
+// Multi Keys
+typedef tbb::concurrent_unordered_multimap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > tbb_aggregate_hash_map_t;
+// Single Keys
+typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > tbb_aggregate_single_hash_map_t;
 
 class SharedHashTableGenerator : public PlanOperation {
 public:

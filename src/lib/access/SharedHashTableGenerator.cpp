@@ -46,16 +46,16 @@ void SharedHashTableGenerator::executePlanOperation() {
     // create map container here
     if (_key == "groupby" || _key == "selfjoin" ) {
         if (_field_definition.size() == 1) {
-            auto map = std::make_shared<aggregate_single_hash_map_t>();
+            auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
             for (auto child : children) {
-                addResult(child->setMap<aggregate_single_hash_map_t, aggregate_single_key_t>(map));
+                addResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
                 scheduler->schedule(child);
             }
         }
         else {
-            auto map = std::make_shared<aggregate_hash_map_t>();
+            auto map = std::make_shared<tbb_aggregate_hash_map_t>();
             for (auto child : children) {
-                addResult(child->setMap<aggregate_hash_map_t, aggregate_key_t>(map));
+                addResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
                 scheduler->schedule(child);
             }
         }

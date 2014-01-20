@@ -4,7 +4,6 @@
 #include "storage/HashTable.h"
 #include <mutex>
 
-
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY> class AtomicSharedHashTable;
 

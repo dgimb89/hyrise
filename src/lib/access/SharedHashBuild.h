@@ -17,6 +17,8 @@ public:
 
     template <typename MAP, typename KEY>
     std::shared_ptr<AbstractHashTable> setMap(std::shared_ptr<MAP> map) {
+        // refresh input here as row_offset is needed here already
+        refreshInput();
         size_t row_offset = 0;
         // check if table is a TableRangeView; if yes, provide the offset to HashTable
         auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
