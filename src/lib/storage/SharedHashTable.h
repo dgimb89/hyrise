@@ -2,7 +2,6 @@
 #define SRC_LIB_STORAGE_SHAREDHASHTABLE_H
 
 #include "storage/HashTable.h"
-#include <mutex>
 
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashTable;
@@ -98,6 +97,7 @@ private:
     }
 };
 
+// container must support concurrent insertion
 template <class MAP, class KEY>
 class SharedHashTable : public SharedHashTableBase<MAP, KEY> {
 public:
@@ -122,6 +122,8 @@ public:
     }
 };
 
+// container must support concurrent insertion & value type has to be a member of std::atomic
+// currently only supports commutative aggregation on integer values
 template <class MAP, class KEY, class AtomicAggregateFun>
 class AtomicSharedHashTable : public SharedHashTableBase<MAP, KEY> {
 public:
@@ -130,7 +132,6 @@ public:
     typedef MAP map_t;
     typedef std::shared_ptr<MAP> map_ptr_t;
 
-    // we do not need a row offset when we don't save row_pos; so dropping it
     AtomicSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, field_t aggrFuncField)
         : base_t(t, f, map_ptr) {
         _aggrFuncFields.push_back(aggrFuncField);
@@ -143,18 +144,78 @@ public:
         typename base_t::map_ptr_t map = base_t::getMap();
         for (pos_t row = 0; row < tableSize; ++row) {
             key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
-            key_t aggregateFuncValue = SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row);
-            if(map->count(key)) {
-                //
-                for(auto element: map->find(key))
-                    AtomicAggregateFun::operator()(element->second, aggregateFuncValue);
-            } else
-                map->insert(typename map_t::value_type(key, AtomicAggregateFun::operator()(aggregateFuncValue)));
+            auto elementPair = map->insert(typename map_t::value_type(key, AtomicAggregateFun::operator()(aggregateFuncValue)));
+            // if key was already present we have to update the value instead
+            if(elementPair->second == false) {
+                AtomicAggregateFun::operator()(elementPair->first->second, SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row));
+            }
         }
     }
 
 protected:
     field_list_t _aggrFuncFields;
+};
+
+// Atomic Aggregation Functions
+// must implement:
+// R    operator()(const R& value)
+// void operator()(std::atomic<R>& containerRef, const R& value)
+// -----------------------------
+
+class AtomicCountAggregationFunc {
+public:
+    template <typename R>
+    static R operator()(const R& value) {
+        return 1;
+    }
+
+    template <typename R>
+    static void operator()(std::atomic<R>& containerRef, const R& value) {
+        containerRef++;
+    }
+};
+
+class AtomicSumAggregationFunc {
+public:
+    template <typename R>
+    static R operator()(const R& value) {
+        return value;
+    }
+
+    template <typename R>
+    static void operator()(std::atomic<R>& containerRef, const R& value) {
+        containerRef += value;
+    }
+};
+
+class AtomicMaxAggregationFunc {
+public:
+    template <typename R>
+    static R operator()(const R& value) {
+        return value;
+    }
+
+    template <typename R>
+    static void operator()(std::atomic<R>& containerRef, const R& value) {
+        R prev_value = containerRef;
+        // whole max operation is not atomic, but compare_exchange is which is sufficient
+        while(prev_value < value && !containerRef.compare_exchange_weak(prev_value, value)) ;
+    }
+};
+
+class AtomicMinAggregationFunc {
+public:
+    template <typename R>
+    static R operator()(const R& value) {
+        return value;
+    }
+
+    template <typename R>
+    static void operator()(std::atomic<R>& containerRef, const R& value) {
+        R prev_value = containerRef;
+        // see AtomicMaxAggregationFunc
+        while(prev_value > value && !containerRef.compare_exchange_weak(prev_value, value)) ;
+    }
 };
 
 #endif // SRC_LIB_STORAGE_SHAREDHASHTABLE_H

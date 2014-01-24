@@ -27,6 +27,13 @@ void SharedHashTableGenerator::executePlanOperation() {
         }
     }
 
+    field_t aggrFuncField;
+
+    if(!_aggrFuncType.empty()) {
+        aggrFuncField = _field_definition.back();
+        _field_definition.pop_back();
+    }
+
     for (size_t i = 0; i < _numberOfSpawns; ++i) {
         auto child = std::dynamic_pointer_cast<SharedHashBuild>(QueryParser::instance().parse("SharedHashBuild", Json::Value()));
         child->addInput(getInputTable());
@@ -34,6 +41,9 @@ void SharedHashTableGenerator::executePlanOperation() {
         child->setPart(i);
         for(auto field : _field_definition)
             child->addField(field);
+
+        // will not be used if no aggrFuncType is set
+        child->setAggregationFunctionField(aggrFuncField);
 
         children.push_back(child);
         auto r = getResponseTask();
@@ -43,20 +53,37 @@ void SharedHashTableGenerator::executePlanOperation() {
       for (auto successor : successors)
         successor->addDependency(children[i]);
     }
-    // create map container here
-    if (_key == "groupby" || _key == "selfjoin" ) {
+    // create map container here and schedule workers
+    // we have to do it ugly in order too keep template typenames
+    if (_key == "groupby") {
         if (_field_definition.size() == 1) {
-            auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
-            for (auto child : children) {
-                addResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
-                scheduler->schedule(child);
+            if(_aggrFuncType.empty()) {
+                auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
+                for (auto child : children) {
+                    addResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
+                    scheduler->schedule(child);
+                }
+            } else {
+                auto map = std::make_shared<tbb_value_single_hash_map_t>();
+                for (auto child : children) {
+                    addResult(child->setMap<tbb_value_single_hash_map_t, aggregate_single_key_t>(map, _aggrFuncType));
+                    scheduler->schedule(child);
+                }
             }
         }
         else {
-            auto map = std::make_shared<tbb_aggregate_hash_map_t>();
-            for (auto child : children) {
-                addResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
-                scheduler->schedule(child);
+            if(_aggrFuncType.empty()) {
+                auto map = std::make_shared<tbb_aggregate_hash_map_t>();
+                for (auto child : children) {
+                    addResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
+                    scheduler->schedule(child);
+                }
+            } else {
+                auto map = std::make_shared<tbb_value_hash_map_t>();
+                for (auto child : children) {
+                    addResult(child->setMap<tbb_value_hash_map_t, aggregate_key_t>(map, _aggrFuncType));
+                    scheduler->schedule(child);
+                }
             }
         }
     } else {
@@ -76,18 +103,29 @@ void SharedHashTableGenerator::setKey(const std::string &key) {
     _key = key;
 }
 
+void SharedHashTableGenerator::setAggregationType(const std::string &aggrFuncType) {
+    _aggrFuncType = aggrFuncType;
+}
+
 std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value &data) {
   auto instance = std::make_shared<SharedHashTableGenerator>();
   if (data.isMember("numCores")) {
-      instance->setNumberOfSpawns(data["numCores"].asInt());
+      instance->setNumberOfSpawns(data["numCores"].asUInt());
   }
   if (data.isMember("fields")) {
     for (unsigned i = 0; i < data["fields"].size(); ++i) {
       instance->addField(data["fields"][i]);
     }
   }
+  // compute indexed field list here, so that aggregation field is always back of field_list
+  instance->computeDeferredIndexes();
+
   if (data.isMember("key")) {
     instance->setKey(data["key"].asString());
+  }
+  if (data.isMember("aggregateFunction")) {
+      instance->addField(data["aggregateFunction"]["field"]);
+      instance->setAggregationType(data["aggregateFunction"]["type"].asString());
   }
   return instance;
 }
