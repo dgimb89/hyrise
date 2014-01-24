@@ -19,11 +19,6 @@ public:
     std::shared_ptr<AbstractHashTable> setMap(std::shared_ptr<MAP> map) {
         // refresh input here as row_offset is needed here already
         refreshInput();
-        size_t row_offset = 0;
-        // check if table is a TableRangeView; if yes, provide the offset to HashTable
-        auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
-        if(input)
-            row_offset = input->getStart();
 
         // map / key type tuple already determinated in SharedHashGenerator, take given one
         if(_preferAtomic) {
@@ -32,6 +27,12 @@ public:
             setHashTable(hashTable);
             return hashTable;
         } else {
+            size_t row_offset = 0;
+            // check if table is a TableRangeView; if yes, provide the offset to HashTable
+            auto input = std::dynamic_pointer_cast<const storage::TableRangeView>(getInputTable());
+            if(input)
+                row_offset = input->getStart();
+
             auto hashTable = std::make_shared<SharedHashTable<MAP,KEY> >(getInputTable(), _indexed_field_definition, map, row_offset);
             addResult(hashTable);
             setHashTable(hashTable);

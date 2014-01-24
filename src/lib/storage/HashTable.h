@@ -73,7 +73,7 @@ template<class T>
 class GroupKeyHash {
 public:
   size_t operator()(const T &key) const {
-    static auto hasher = std::hash<value_id_t>();
+    static auto hasher = std::hash<size_t>();
 
     std::size_t seed = 0;
     for (size_t i = 0, key_size = key.size();
@@ -101,8 +101,7 @@ template<class T>
 class SingleGroupKeyHash {
 public:
   size_t operator()(const T &key) const {
-    static auto hasher = std::hash<value_id_t>();
-    return hasher(key);
+    return std::hash<size_t>()(key);
   }
 
   static T getGroupKey(const hyrise::storage::c_atable_ptr_t &table,
@@ -171,8 +170,13 @@ public:
   // create a new HashTable based on a number of HashTables
   explicit HashTable(const std::vector<std::shared_ptr<const AbstractHashTable> >& hashTables) {
     base_t::_dirty = true;
-    for (auto & nextElement: hashTables) {
-      const auto& ht = checked_pointer_cast<const HashTable<MAP, KEY>>(nextElement);
+
+    // use copy operator for the first given hashtable
+    base_t::_map = checked_pointer_cast<const HashTable<MAP, KEY>>(hashTables.front())->getMap();
+
+    // insert entries of the remaining hash tables
+    for(auto htIt = hashTables.begin()+1; htIt != hashTables.end(); ++htIt) {
+      const auto& ht = checked_pointer_cast<const HashTable<MAP, KEY>>(*htIt);
       base_t::_map.insert(ht->getMapBegin(), ht->getMapEnd());
     }
   }
@@ -207,7 +211,7 @@ public:
     return base_t::_map.end();
   }
 
-  map_t &getMap() {
+  const map_t &getMap() const {
     return base_t::_map;
   }
 
@@ -363,7 +367,8 @@ public:
         for (; (it2 != end) && (it1->first == it2->first); ++it2);
         ++result;
       }
-      return _numKeys = result;
+      _numKeys = result;
+      _dirty = false;
     }
     return _numKeys;
   }

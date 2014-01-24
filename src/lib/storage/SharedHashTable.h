@@ -5,7 +5,7 @@
 #include <mutex>
 
 template<class MAP, class KEY> class SharedHashTable;
-template<class MAP, class KEY> class AtomicSharedHashTable;
+template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashTable;
 
 class AbstractSharedHashTable {
 public:
@@ -122,7 +122,7 @@ public:
     }
 };
 
-template <class MAP, class KEY>
+template <class MAP, class KEY, class AtomicAggregateFun>
 class AtomicSharedHashTable : public SharedHashTableBase<MAP, KEY> {
 public:
     typedef SharedHashTableBase<MAP,KEY> base_t;
@@ -130,13 +130,31 @@ public:
     typedef MAP map_t;
     typedef std::shared_ptr<MAP> map_ptr_t;
 
-    AtomicSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
-        : base_t(t, f, map_ptr, row_offset) {
+    // we do not need a row offset when we don't save row_pos; so dropping it
+    AtomicSharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, field_t aggrFuncField)
+        : base_t(t, f, map_ptr) {
+        _aggrFuncFields.push_back(aggrFuncField);
     }
 
     virtual void populateMap() {
-        std::runtime_error("not yet implemented");
+        base_t::_dirty = true;
+        size_t fieldSize = base_t::_fields.size();
+        size_t tableSize = base_t::_table->size();
+        typename base_t::map_ptr_t map = base_t::getMap();
+        for (pos_t row = 0; row < tableSize; ++row) {
+            key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
+            key_t aggregateFuncValue = SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row);
+            if(map->count(key)) {
+                //
+                for(auto element: map->find(key))
+                    AtomicAggregateFun::operator()(element->second, aggregateFuncValue);
+            } else
+                map->insert(typename map_t::value_type(key, AtomicAggregateFun::operator()(aggregateFuncValue)));
+        }
     }
+
+protected:
+    field_list_t _aggrFuncFields;
 };
 
 #endif // SRC_LIB_STORAGE_SHAREDHASHTABLE_H

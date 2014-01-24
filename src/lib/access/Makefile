@@ -12,6 +12,10 @@ hyr-access.libname := hyr-access
 hyr-access.deps := json hyr-net hyr-storage hyr-io hyr-layouter
 hyr-access.libs := boost_regex
 
+ifeq ($(WITH_PROFILER), 1)
+hyr-access.libs += profiler
+endif
+
 ifeq ($(USE_V8), 1)
 hyr-access.CFLAGS += -DWITH_V8
 hyr-access.LIBS += -lv8
