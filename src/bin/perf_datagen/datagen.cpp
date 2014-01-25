@@ -837,78 +837,6 @@ void gen_stock() {
 
       /* s_quantity */
       FPRINTF(output, "%d", get_random(90) + 10);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_01 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_02 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_03 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_04 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_05 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_06 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_07 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_08 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_09 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_dist_10 */
-      get_l_string(a_string, 24, 24);
-      FPRINTF(output, "%s", a_string);
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_ytd */
-      FPRINTF2(output, "0");
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_order_cnt */
-      FPRINTF2(output, "0");
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_remote_cnt */
-      FPRINTF2(output, "0");
-      METAPRINTF((output, "%c", delimiter));
-
-      /* s_data */
-      get_a_string(a_string, 26, 50);
-      if (get_percentage() < .10) {
-        k = get_random(strlen(a_string) - 8);
-        strncpy(a_string + k, "ORIGINAL", 8);
-      }
-      escape_me(a_string);
-      FPRINTF(output, "%s", a_string);
 
       METAPRINTF((output, "\n"));
     }
@@ -1118,14 +1046,14 @@ int main(int argc, char *argv[]) {
 
   printf("Generating data files for %d warehouse(s)...\n", warehouses);
 
-  gen_items();
-  gen_warehouses();
+  /*gen_items();
+  gen_warehouses();*/
   gen_stock();
-  gen_districts();
+  /*gen_districts();
   gen_customers();
   gen_history();
   gen_orders();
-  gen_new_orders();
+  gen_new_orders();*/
 
   return 0;
 }
