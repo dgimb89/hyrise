@@ -27,13 +27,6 @@ void SharedHashTableGenerator::executePlanOperation() {
         }
     }
 
-    field_t aggrFuncField;
-
-    if(!_aggrFuncType.empty()) {
-        aggrFuncField = _field_definition.back();
-        _field_definition.pop_back();
-    }
-
     for (size_t i = 0; i < _numberOfSpawns; ++i) {
         auto child = std::dynamic_pointer_cast<SharedHashBuild>(QueryParser::instance().parse("SharedHashBuild", Json::Value()));
         child->addInput(getInputTable());
@@ -43,7 +36,7 @@ void SharedHashTableGenerator::executePlanOperation() {
             child->addField(field);
 
         // will not be used if no aggrFuncType is set
-        child->setAggregationFunctionField(aggrFuncField);
+        child->setAggregationFunctionField(_aggrFuncField);
 
         children.push_back(child);
         auto r = getResponseTask();
@@ -108,6 +101,10 @@ void SharedHashTableGenerator::setAggregationType(const std::string &aggrFuncTyp
     _aggrFuncType = aggrFuncType;
 }
 
+void SharedHashTableGenerator::setAggregationFunctionField(field_t aggrFuncField) {
+    _aggrFuncField = aggrFuncField;
+}
+
 std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value &data) {
   auto instance = std::make_shared<SharedHashTableGenerator>();
   if (data.isMember("numCores")) {
@@ -118,14 +115,13 @@ std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value
       instance->addField(data["fields"][i]);
     }
   }
-  // compute indexed field list here, so that aggregation field is always back of field_list
-  instance->computeDeferredIndexes();
 
   if (data.isMember("key")) {
     instance->setKey(data["key"].asString());
   }
   if (data.isMember("aggregateFunction")) {
-      instance->addField(data["aggregateFunction"]["field"]);
+      // only accepting field indices for aggregateFunction parameters yet
+      instance->setAggregationFunctionField(data["aggregateFunction"]["field"].asUInt());
       instance->setAggregationType(data["aggregateFunction"]["type"].asString());
   }
   return instance;

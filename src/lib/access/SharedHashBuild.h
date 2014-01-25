@@ -27,6 +27,7 @@ public:
         if(input)
             row_offset = input->getStart();
 
+        computeDeferredIndexes();
         auto hashTable = std::make_shared<SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
         addResult(hashTable);
         setHashTable(hashTable);

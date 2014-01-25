@@ -5,6 +5,7 @@
 #include "storage/ColumnMetadata.h"
 #include "storage/DictionaryFactory.h"
 #include "storage/HashTable.h"
+#include "storage/SharedHashTable.h"
 #include "storage/PointerCalculator.h"
 #include "storage/OrderIndifferentDictionary.h"
 #include "storage/meta_storage.h"
@@ -118,6 +119,12 @@ std::shared_ptr<PlanOperation> GroupByScan::parse(const Json::Value &v) {
   if (v.isMember("key") && v["key"].asString().compare("value") == 0) {
     gs->_globalAggregation = true;
   }
+
+  // Check if it is a shared hash table input
+  if(v.isMember("sharedHT")) {
+      gs->_sharedHashTable = v["sharedHT"].asBool();
+  }
+
   return gs;
 }
 
@@ -194,7 +201,6 @@ void GroupByScan::executeGroupBy() {
   auto groupResults = getInputHashTable();
   // Allocate some memory for the result tab and resize the table
   resultTab->resize(groupResults->numKeys());
-
   pos_t row = 0;
   typename HashTableType::map_const_iterator_t it1, it2, end;
   // set iterators: in the sequential case, getInputTable() returns an AggregateHashTable, in the parallel case a HashTableView<>

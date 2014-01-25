@@ -24,6 +24,7 @@ public:
 
     void setKey(const std::string &key);
     void setAggregationType(const std::string& aggrFuncType);
+    void setAggregationFunctionField(field_t aggrFuncField);
 
     static std::shared_ptr<PlanOperation> parse(const Json::Value &data);
 
@@ -31,6 +32,7 @@ protected:
     std::string _key;
     size_t _numberOfSpawns;
     std::string _aggrFuncType;
+    field_t _aggrFuncField;
 private:
     void addSharedHashtableResult(const storage::c_aresource_ptr_t& hashtable);
 };
