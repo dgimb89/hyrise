@@ -51,7 +51,7 @@ public:
         if(!hashTable) throw std::runtime_error("Aggregation Function Type in PlanOperation SharedHashBuild not supported; aggrFuncType: " + aggrFuncType);
 
         addResult(hashTable);
-        setHashTable(hashTable);
+        setHashTable(std::dynamic_pointer_cast<AbstractSharedHashTable>(hashTable));
         return hashTable;
     }
 

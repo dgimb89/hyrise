@@ -55,18 +55,19 @@ void SharedHashTableGenerator::executePlanOperation() {
     }
     // create map container here and schedule workers
     // we have to do it ugly in order too keep template typenames
+
     if (_key == "groupby") {
         if (_field_definition.size() == 1) {
             if(_aggrFuncType.empty()) {
                 auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
                 for (auto child : children) {
-                    addResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
+                    addSharedHashtableResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
                     scheduler->schedule(child);
                 }
             } else {
                 auto map = std::make_shared<tbb_value_single_hash_map_t>();
                 for (auto child : children) {
-                    addResult(child->setMap<tbb_value_single_hash_map_t, aggregate_single_key_t>(map, _aggrFuncType));
+                    addSharedHashtableResult(child->setMap<tbb_value_single_hash_map_t, aggregate_single_key_t>(map, _aggrFuncType));
                     scheduler->schedule(child);
                 }
             }
@@ -75,13 +76,13 @@ void SharedHashTableGenerator::executePlanOperation() {
             if(_aggrFuncType.empty()) {
                 auto map = std::make_shared<tbb_aggregate_hash_map_t>();
                 for (auto child : children) {
-                    addResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
+                    addSharedHashtableResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
                     scheduler->schedule(child);
                 }
             } else {
                 auto map = std::make_shared<tbb_value_hash_map_t>();
                 for (auto child : children) {
-                    addResult(child->setMap<tbb_value_hash_map_t, aggregate_key_t>(map, _aggrFuncType));
+                    addSharedHashtableResult(child->setMap<tbb_value_hash_map_t, aggregate_key_t>(map, _aggrFuncType));
                     scheduler->schedule(child);
                 }
             }
@@ -128,6 +129,13 @@ std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value
       instance->setAggregationType(data["aggregateFunction"]["type"].asString());
   }
   return instance;
+}
+
+void SharedHashTableGenerator::addSharedHashtableResult(const storage::c_aresource_ptr_t &hashtable) {
+    // as the same shared hashtable is filled by all workers, we have to only add one of them as result resource
+    if(!output.size()) {
+        addResult(hashtable);
+    }
 }
 
 const std::string SharedHashTableGenerator::vname() {

@@ -9,10 +9,10 @@ namespace access {
 
 // Multi Keys
 typedef tbb::concurrent_unordered_multimap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > tbb_aggregate_hash_map_t;
-typedef tbb::concurrent_unordered_multimap<aggregate_key_t, std::atomic<value_id_t>, GroupKeyHash<aggregate_key_t> tbb_value_hash_map_t;
+typedef tbb::concurrent_unordered_multimap<aggregate_key_t, atomic_aggregate_value_t<value_id_t>, GroupKeyHash<aggregate_key_t> > tbb_value_hash_map_t;
 // Single Keys
 typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > tbb_aggregate_single_hash_map_t;
-typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, std::atomic<value_id_t>, SingleGroupKeyHash<aggregate_single_key_t> > tbb_value_single_hash_map_t;
+typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, atomic_aggregate_value_t<value_id_t>, SingleGroupKeyHash<aggregate_single_key_t> > tbb_value_single_hash_map_t;
 
 class SharedHashTableGenerator : public PlanOperation {
 public:
@@ -31,6 +31,8 @@ protected:
     std::string _key;
     size_t _numberOfSpawns;
     std::string _aggrFuncType;
+private:
+    void addSharedHashtableResult(const storage::c_aresource_ptr_t& hashtable);
 };
 
 }

@@ -28,10 +28,6 @@ void SharedHashBuild::setAggregationFunctionField(field_t aggrFuncField) {
     _aggrFuncField = aggrFuncField;
 }
 
-void SharedHashBuild::setAggregationType(const std::string &aggrFuncType) {
-    _aggrFuncType = aggrFuncType;
-}
-
 std::shared_ptr<PlanOperation> SharedHashBuild::parse(const Json::Value &data) {
     std::shared_ptr<PlanOperation> instance = BasicParser<SharedHashBuild>::parse(data);
     return instance;

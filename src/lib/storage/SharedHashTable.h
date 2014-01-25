@@ -3,6 +3,16 @@
 
 #include "storage/HashTable.h"
 
+template <typename R>
+class atomic_aggregate_value_t : public std::atomic<R> {
+public:
+    atomic_aggregate_value_t(const atomic_aggregate_value_t& copyValue) : std::atomic<R>((const R&)copyValue) {
+    }
+
+    atomic_aggregate_value_t(R copyValue) : std::atomic<R>(copyValue) {
+    }
+};
+
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashTable;
 
@@ -19,16 +29,14 @@ public:
     typedef MAP map_t;
     typedef std::shared_ptr<MAP> map_ptr_t;
     typedef typename map_t::const_iterator map_const_iterator_t;
-    typedef decltype(std::declval<const MAP>().equal_range(key_t())) map_const_range_t;
 
     SharedHashTableBase(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, unsigned row_offset = 0)
         : SharedHashTableBase(t, f, nullptr, row_offset) {
     }
 
-    SharedHashTableBase(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
+    SharedHashTableBase(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr)
         : base_t(t, f) {
         setMap(map_ptr);
-        setRowOffset(row_offset);
     }
 
     map_ptr_t getMap() {
@@ -47,20 +55,6 @@ public:
         return base_t::_map->size();
       }
 
-    /// Get positions for values in the table cells of given row and columns.
-    virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
-                           const field_list_t &columns,
-                           const pos_t row) const {
-        key_t key = MAP::hasher::getGroupKey(table, columns, columns.size(), row);
-        auto range = base_t::_map->equal_range(key);
-        return constructPositions(range);
-      }
-
-    virtual pos_list_t get(const key_t &key) const {
-      auto range = base_t::_map->equal_range(key);
-      return constructPositions(range);
-    }
-
     virtual uint64_t numKeys() const {
         if (base_t::_dirty) {
           uint64_t result = 0;
@@ -74,6 +68,48 @@ public:
         }
         return base_t::_numKeys;
       }
+};
+
+// container must support concurrent insertion
+template <class MAP, class KEY>
+class SharedHashTable : public SharedHashTableBase<MAP, KEY> {
+public:
+    typedef SharedHashTableBase<MAP,KEY> base_t;
+    typedef KEY key_t;
+    typedef MAP map_t;
+    typedef std::shared_ptr<MAP> map_ptr_t;
+    typedef typename map_t::const_iterator map_const_iterator_t;
+    typedef decltype(std::declval<const MAP>().equal_range(key_t())) map_const_range_t;
+
+    SharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
+        : base_t(t, f, map_ptr) {
+        setRowOffset(row_offset);
+    }
+
+    virtual void populateMap() {
+        base_t::_dirty = true;
+        size_t fieldSize = base_t::_fields.size();
+        size_t tableSize = base_t::_table->size();
+        typename base_t::map_ptr_t map = base_t::getMap();
+        for (pos_t row = 0; row < tableSize; ++row) {
+            key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
+            map->insert(typename map_t::value_type(key, row + _rowOffset));
+        }
+    }
+
+    /// Get positions for values in the table cells of given row and columns.
+    virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
+                           const field_list_t &columns,
+                           const pos_t row) const {
+        key_t key = MAP::hasher::getGroupKey(table, columns, columns.size(), row);
+        auto range = base_t::_map->equal_range(key);
+        return constructPositions(range);
+      }
+
+    virtual pos_list_t get(const key_t &key) const {
+      auto range = base_t::_map->equal_range(key);
+      return constructPositions(range);
+    }
 
     void setRowOffset(size_t rowOffset) {
         _rowOffset = rowOffset;
@@ -97,31 +133,6 @@ private:
     }
 };
 
-// container must support concurrent insertion
-template <class MAP, class KEY>
-class SharedHashTable : public SharedHashTableBase<MAP, KEY> {
-public:
-    typedef SharedHashTableBase<MAP,KEY> base_t;
-    typedef KEY key_t;
-    typedef MAP map_t;
-    typedef std::shared_ptr<MAP> map_ptr_t;
-
-    SharedHashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, map_ptr_t map_ptr, unsigned row_offset = 0)
-        : base_t(t, f, map_ptr, row_offset) {
-    }
-
-    virtual void populateMap() {
-        base_t::_dirty = true;
-        size_t fieldSize = base_t::_fields.size();
-        size_t tableSize = base_t::_table->size();
-        typename base_t::map_ptr_t map = base_t::getMap();
-        for (pos_t row = 0; row < tableSize; ++row) {
-            key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
-            map->insert(typename map_t::value_type(key, row + base_t::_rowOffset));
-        }
-    }
-};
-
 // container must support concurrent insertion & value type has to be a member of std::atomic
 // currently only supports commutative aggregation on integer values
 template <class MAP, class KEY, class AtomicAggregateFun>
@@ -137,6 +148,16 @@ public:
         _aggrFuncFields.push_back(aggrFuncField);
     }
 
+    virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
+                           const field_list_t &columns,
+                           const pos_t row) const {
+        return pos_list_t();
+      }
+
+    virtual pos_list_t get(const key_t &key) const {
+        return pos_list_t();
+    }
+
     virtual void populateMap() {
         base_t::_dirty = true;
         size_t fieldSize = base_t::_fields.size();
@@ -144,10 +165,12 @@ public:
         typename base_t::map_ptr_t map = base_t::getMap();
         for (pos_t row = 0; row < tableSize; ++row) {
             key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
-            auto elementPair = map->insert(typename map_t::value_type(key, AtomicAggregateFun::operator()(aggregateFuncValue)));
+            value_id_t aggregateFuncValue = SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row);
+            auto elementPair = map->insert(typename map_t::value_type(key, atomic_aggregate_value_t<value_id_t>(AtomicAggregateFun::firstValue(aggregateFuncValue))));
+
             // if key was already present we have to update the value instead
-            if(elementPair->second == false) {
-                AtomicAggregateFun::operator()(elementPair->first->second, SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row));
+            if(elementPair.second == false) {
+                AtomicAggregateFun::update(elementPair.first->second, aggregateFuncValue);
             }
         }
     }
@@ -162,56 +185,52 @@ protected:
 // void operator()(std::atomic<R>& containerRef, const R& value)
 // -----------------------------
 
-class AtomicCountAggregationFunc {
-public:
+struct AtomicCountAggregationFunc {
     template <typename R>
-    static R operator()(const R& value) {
+    static R firstValue(const R& value) {
         return 1;
     }
 
     template <typename R>
-    static void operator()(std::atomic<R>& containerRef, const R& value) {
+    static void update(std::atomic<R>& containerRef, const R& value) {
         containerRef++;
     }
 };
 
-class AtomicSumAggregationFunc {
-public:
+struct AtomicSumAggregationFunc {
     template <typename R>
-    static R operator()(const R& value) {
+    static R firstValue(const R& value) {
         return value;
     }
 
     template <typename R>
-    static void operator()(std::atomic<R>& containerRef, const R& value) {
+    static void update(std::atomic<R>& containerRef, const R& value) {
         containerRef += value;
     }
 };
 
-class AtomicMaxAggregationFunc {
-public:
+struct AtomicMaxAggregationFunc {
     template <typename R>
-    static R operator()(const R& value) {
+    static R firstValue(const R& value) {
         return value;
     }
 
     template <typename R>
-    static void operator()(std::atomic<R>& containerRef, const R& value) {
+    static void update(std::atomic<R>& containerRef, const R& value) {
         R prev_value = containerRef;
         // whole max operation is not atomic, but compare_exchange is which is sufficient
         while(prev_value < value && !containerRef.compare_exchange_weak(prev_value, value)) ;
     }
 };
 
-class AtomicMinAggregationFunc {
-public:
+struct AtomicMinAggregationFunc {
     template <typename R>
-    static R operator()(const R& value) {
+    static R firstValue(const R& value) {
         return value;
     }
 
     template <typename R>
-    static void operator()(std::atomic<R>& containerRef, const R& value) {
+    static void update(std::atomic<R>& containerRef, const R& value) {
         R prev_value = containerRef;
         // see AtomicMaxAggregationFunc
         while(prev_value > value && !containerRef.compare_exchange_weak(prev_value, value)) ;
