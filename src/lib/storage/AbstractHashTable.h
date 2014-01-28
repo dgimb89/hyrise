@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <memory>
 #include <algorithm>
+#include <atomic>
 
 
 #include "helper/types.h"

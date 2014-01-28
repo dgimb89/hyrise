@@ -22,7 +22,7 @@ public:
 };
 
 template <class MAP, class KEY>
-class SharedHashTableBase : public HashTableBase<std::shared_ptr<MAP>,KEY>, public AbstractSharedHashTable, public std::enable_shared_from_this<SharedHashTableBase<MAP,KEY>> {
+class SharedHashTableBase : public HashTableBase<std::shared_ptr<MAP>,KEY>, public AbstractSharedHashTable, public std::enable_shared_from_this<SharedHashTableBase<MAP,KEY> > {
 public:
     typedef HashTableBase<std::shared_ptr<MAP>,KEY> base_t;
     typedef KEY key_t;
