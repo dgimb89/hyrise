@@ -53,12 +53,14 @@ void SharedHashTableGenerator::executePlanOperation() {
         if (_field_definition.size() == 1) {
             if(_aggrFuncType.empty()) {
                 auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
+                map->rehash(20000000);
                 for (auto child : children) {
                     addSharedHashtableResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
                     scheduler->schedule(child);
                 }
             } else {
                 auto map = std::make_shared<tbb_value_single_hash_map_t>();
+                map->rehash(20000000);
                 for (auto child : children) {
                     addSharedHashtableResult(child->setMap<tbb_value_single_hash_map_t, aggregate_single_key_t>(map, _aggrFuncType));
                     scheduler->schedule(child);
@@ -68,12 +70,14 @@ void SharedHashTableGenerator::executePlanOperation() {
         else {
             if(_aggrFuncType.empty()) {
                 auto map = std::make_shared<tbb_aggregate_hash_map_t>();
+                map->rehash(20000000);
                 for (auto child : children) {
                     addSharedHashtableResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
                     scheduler->schedule(child);
                 }
             } else {
                 auto map = std::make_shared<tbb_value_hash_map_t>();
+                map->rehash(20000000);
                 for (auto child : children) {
                     addSharedHashtableResult(child->setMap<tbb_value_hash_map_t, aggregate_key_t>(map, _aggrFuncType));
                     scheduler->schedule(child);

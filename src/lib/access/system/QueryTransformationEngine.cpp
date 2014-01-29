@@ -42,6 +42,11 @@ void QueryTransformationEngine::applyParallelizationTo(
   if (operatorConfiguration["type"] == "HashBuild") {
     consolidateOperatorId = mergeIdFor(operatorId);
     consolidateOperator = this->mergeOperator(operatorConfiguration["key"].asString());
+  } else if (operatorConfiguration["type"] == "GroupByBuild") {
+    consolidateOperatorId = mergeIdFor(operatorId);
+    Json::Value mergeOperator(Json::objectValue);
+    mergeOperator["type"] = "MergeAggregateHashMap";
+    consolidateOperator = mergeOperator;
   } else {
     consolidateOperatorId = unionIdFor(operatorId);
     consolidateOperator = this->unionOperator();
