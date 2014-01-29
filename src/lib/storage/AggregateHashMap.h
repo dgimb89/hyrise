@@ -3,6 +3,7 @@
 
 #include "storage/HashTable.h"
 #include "helper/types.h"
+#include <map>
 #include <unordered_map>
 
 // forward declaration
@@ -33,7 +34,8 @@ public:
     typedef MAPPED mapped_t;
     typedef KEY key_t;
     typedef HashTableBase<map_t,key_t> base_t;
-    typedef typename map_t::const_iterator map_const_iterator_t;
+    typedef std::map<pos_t, key_t> posMap_t;
+    typedef typename posMap_t::const_iterator posmap_const_iterator_t;
 
     AggregateHashMap(hyrise::storage::c_ahashtable_ptr_t aggregateHashMap) {
         auto copyHashMap = checked_pointer_cast<const AggregateHashMap<KEY,MAPPED,HASHER,AGGR_FUN> >(aggregateHashMap);
@@ -54,6 +56,7 @@ public:
                 AGGR_FUN::update(result.first->second, element.second);
             }
         }
+        _posMap.insert(mergeHashMap->getPosMapBegin(), mergeHashMap->getPosMapEnd());
     }
 
     virtual uint64_t numKeys() const {
@@ -79,6 +82,14 @@ public:
         return base_t::_map;
     }
 
+    posmap_const_iterator_t getPosMapBegin() const {
+      return _posMap.begin();
+    }
+
+    posmap_const_iterator_t getPosMapEnd() const {
+      return _posMap.end();
+    }
+
     /// Get positions for values in the table cells of given row and columns.
     virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
                            const field_list_t &columns,
@@ -93,6 +104,7 @@ protected:
         size_t tableSize = base_t::_table->size();
         for (pos_t row = 0; row < tableSize; ++row) {
             key_t key = HASHER::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
+            _posMap[row] = key;
             hyrise_int_t rowValue = AGGR_FUN::firstValue(base_t::_table->template getValue<hyrise_int_t>(aggrFuncField, row));
             auto result = base_t::_map.insert(typename map_t::value_type(key, rowValue));
             if(!result.second) {
@@ -100,6 +112,8 @@ protected:
             }
         }
     }
+
+    posMap_t _posMap;
 };
 
 struct SumAggregationFunc {
