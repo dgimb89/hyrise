@@ -121,6 +121,20 @@ void loadHyriseLayouts() {
   stock_layout.push_back(std::pair<std::string, std::string>("S_I_ID", "INTEGER"));
   stock_layout.push_back(std::pair<std::string, std::string>("S_W_ID", "INTEGER"));
   stock_layout.push_back(std::pair<std::string, std::string>("S_QUANTITY", "INTEGER"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_01", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_02", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_03", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_04", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_05", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_06", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_07", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_08", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_09", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DIST_10", "STRING"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_YTD", "INTEGER"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_ORDER_CNT", "INTEGER"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_REMOTE_CNT", "INTEGER"));
+  stock_layout.push_back(std::pair<std::string, std::string>("S_DATA", "STRING"));
 
   layouts["stock"] = stock_layout;
 }
