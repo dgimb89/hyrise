@@ -10,13 +10,25 @@
             "table": "employees",
             "filename": "tables/employees.tbl"
         },
-
         "1": {
             "type": "SharedHashTableGenerator",
 	    "numCores": 4,
             "fields": ["employee_company_id"],
 	    "key": "groupby"
+        },
+        "2": {
+            "type": "GroupByScan",
+            "fields": ["employee_company_id"],
+	    "instances": 3,
+	    "sharedHT": true,
+	    "functions": [
+                {"type": 1, /*COUNT*/ "field": "employee_company_id"}
+            ]
+        },
+        "3": {
+            "type": "SortScan",
+            "fields": [0]
         }
     },
-    "edges" : [["0", "1"]]
+    "edges" : [["0", "1"], ["0", "2"], ["1", "2"], ["2", "3"]]
 }

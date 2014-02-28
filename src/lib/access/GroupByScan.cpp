@@ -81,9 +81,15 @@ void GroupByScan::executePlanOperation() {
       }
     }
     if (_field_definition.size() == 1) {
-      return executeGroupBy<SingleAggregateHashTable, aggregate_single_hash_map_t, aggregate_single_key_t>();
+        if(_sharedHashTable)
+            return executeGroupBy<SingleAggregateSharedHashTableBase, tbb_aggregate_single_hash_map_t, aggregate_single_key_t>();
+        else
+            return executeGroupBy<SingleAggregateHashTable, aggregate_single_hash_map_t, aggregate_single_key_t>();
     } else {
-      return executeGroupBy<AggregateHashTable, aggregate_hash_map_t, aggregate_key_t>();
+        if(_sharedHashTable)
+            return executeGroupBy<AggregateSharedHashTableBase, tbb_aggregate_hash_map_t, aggregate_key_t>();
+        else
+            return executeGroupBy<AggregateHashTable, aggregate_hash_map_t, aggregate_key_t>();
     }
   } else {
     auto resultTab = createResultTableLayout();
@@ -172,9 +178,15 @@ void GroupByScan::splitInput() {
     auto r = distribute(hashTables[0]->numKeys(), _part, _count);
 
     if ((_indexed_field_definition.size() + _named_field_definition.size()) == 1)
-      input.setHash(std::dynamic_pointer_cast<const SingleAggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
+        if(_sharedHashTable)
+            input.setHash(std::dynamic_pointer_cast<const SingleAggregateSharedHashTableBase>(hashTables[0])->view(r.first, r.second), 0);
+        else
+            input.setHash(std::dynamic_pointer_cast<const SingleAggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
     else
-      input.setHash(std::dynamic_pointer_cast<const AggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
+        if(_sharedHashTable)
+            input.setHash(std::dynamic_pointer_cast<const AggregateSharedHashTableBase>(hashTables[0])->view(r.first, r.second), 0);
+        else
+            input.setHash(std::dynamic_pointer_cast<const AggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
   } else if(_count > 0 && hashTables.empty()){
     ParallelizablePlanOperation::splitInput();
   }
@@ -210,9 +222,15 @@ void GroupByScan::executeGroupBy() {
     it1 = aggregateHashTable->getMapBegin();
     end = aggregateHashTable->getMapEnd();
   } else {
-    auto hashTableView = std::dynamic_pointer_cast<const HashTableView<MapType, KeyType> >(groupResults);
-    it1 = hashTableView->getMapBegin();
-    end = hashTableView->getMapEnd();
+    if(_sharedHashTable) {
+        auto hashTableView = std::dynamic_pointer_cast<const HashTableView<MapType, KeyType, SharedHashTableBase> >(groupResults);
+        it1 = hashTableView->getMapBegin();
+        end = hashTableView->getMapEnd();
+    } else {
+        auto hashTableView = std::dynamic_pointer_cast<const HashTableView<MapType, KeyType, HashTable> >(groupResults);
+        it1 = hashTableView->getMapBegin();
+        end = hashTableView->getMapEnd();
+    }
   }
   for (it2 = it1; it1 != end; it1 = it2) {
     // outer loop over unique keys

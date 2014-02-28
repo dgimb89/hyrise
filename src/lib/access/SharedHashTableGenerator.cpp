@@ -35,9 +35,6 @@ void SharedHashTableGenerator::executePlanOperation() {
         for(auto field : _field_definition)
             child->addField(field);
 
-        // will not be used if no aggrFuncType is set
-        child->setAggregationFunctionField(_aggrFuncField);
-
         children.push_back(child);
         auto r = getResponseTask();
         if(r != nullptr)
@@ -51,37 +48,19 @@ void SharedHashTableGenerator::executePlanOperation() {
 
     if (_key == "groupby") {
         if (_field_definition.size() == 1) {
-            if(_aggrFuncType.empty()) {
-                auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
-                map->rehash(20000000);
-                for (auto child : children) {
-                    addSharedHashtableResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
-                    scheduler->schedule(child);
-                }
-            } else {
-                auto map = std::make_shared<tbb_value_single_hash_map_t>();
-                map->rehash(20000000);
-                for (auto child : children) {
-                    addSharedHashtableResult(child->setMap<tbb_value_single_hash_map_t, aggregate_single_key_t>(map, _aggrFuncType));
-                    scheduler->schedule(child);
-                }
+            auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
+            map->rehash(getInputTable()->size());
+            for (auto child : children) {
+                addSharedHashtableResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
+                scheduler->schedule(child);
             }
         }
         else {
-            if(_aggrFuncType.empty()) {
-                auto map = std::make_shared<tbb_aggregate_hash_map_t>();
-                map->rehash(20000000);
-                for (auto child : children) {
-                    addSharedHashtableResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
-                    scheduler->schedule(child);
-                }
-            } else {
-                auto map = std::make_shared<tbb_value_hash_map_t>();
-                map->rehash(20000000);
-                for (auto child : children) {
-                    addSharedHashtableResult(child->setMap<tbb_value_hash_map_t, aggregate_key_t>(map, _aggrFuncType));
-                    scheduler->schedule(child);
-                }
+            auto map = std::make_shared<tbb_aggregate_hash_map_t>();
+            map->rehash(getInputTable()->size());
+            for (auto child : children) {
+                addSharedHashtableResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
+                scheduler->schedule(child);
             }
         }
     } else {
@@ -101,14 +80,6 @@ void SharedHashTableGenerator::setKey(const std::string &key) {
     _key = key;
 }
 
-void SharedHashTableGenerator::setAggregationType(const std::string &aggrFuncType) {
-    _aggrFuncType = aggrFuncType;
-}
-
-void SharedHashTableGenerator::setAggregationFunctionField(field_t aggrFuncField) {
-    _aggrFuncField = aggrFuncField;
-}
-
 std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value &data) {
   auto instance = std::make_shared<SharedHashTableGenerator>();
   if (data.isMember("numCores")) {
@@ -122,11 +93,6 @@ std::shared_ptr<PlanOperation> SharedHashTableGenerator::parse(const Json::Value
 
   if (data.isMember("key")) {
     instance->setKey(data["key"].asString());
-  }
-  if (data.isMember("aggregateFunction")) {
-      // only accepting field indices for aggregateFunction parameters yet
-      instance->setAggregationFunctionField(data["aggregateFunction"]["field"].asUInt());
-      instance->setAggregationType(data["aggregateFunction"]["type"].asString());
   }
   return instance;
 }

@@ -2,6 +2,7 @@
 #define SRC_LIB_STORAGE_SHAREDHASHTABLE_H
 
 #include "storage/HashTable.h"
+#include <tbb/concurrent_unordered_map.h>
 
 template <typename R>
 class atomic_aggregate_value_t : public std::atomic<R> {
@@ -13,8 +14,19 @@ public:
     }
 };
 
+template<class MAP, class KEY> class SharedHashTableBase;
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashTable;
+
+// Multi Keys
+typedef tbb::concurrent_unordered_multimap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > tbb_aggregate_hash_map_t;
+typedef tbb::concurrent_unordered_multimap<aggregate_key_t, atomic_aggregate_value_t<value_id_t>, GroupKeyHash<aggregate_key_t> > tbb_value_hash_map_t;
+// Single Keys
+typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > tbb_aggregate_single_hash_map_t;
+typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, atomic_aggregate_value_t<value_id_t>, SingleGroupKeyHash<aggregate_single_key_t> > tbb_value_single_hash_map_t;
+
+typedef SharedHashTableBase<tbb_aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateSharedHashTableBase;
+typedef SharedHashTableBase<tbb_aggregate_hash_map_t, aggregate_key_t> AggregateSharedHashTableBase;
 
 class AbstractSharedHashTable {
 public:
@@ -39,12 +51,12 @@ public:
         setMap(map_ptr);
     }
 
-    map_ptr_t getMap() {
-        // lazy initialization
-        if(!base_t::_map) {
-            base_t::_map = std::make_shared<map_t>();
-        }
-        return base_t::_map;
+    /// Get const interators to underlying map's begin or end.
+    virtual map_const_iterator_t getMapBegin() const {
+        return base_t::_map->begin();
+    }
+    virtual map_const_iterator_t getMapEnd() const {
+        return base_t::_map->end();
     }
 
     void setMap(map_ptr_t map_ptr) {
@@ -54,6 +66,10 @@ public:
     virtual size_t size() const {
         return base_t::_map->size();
       }
+
+    std::shared_ptr<HashTableView<MAP, KEY, SharedHashTableBase> > view(size_t first, size_t last) const {
+      return std::make_shared<HashTableView<MAP, KEY, SharedHashTableBase> >(this->shared_from_this(), first, last);
+    }
 
     virtual uint64_t numKeys() const {
         if (base_t::_dirty) {
@@ -68,6 +84,14 @@ public:
         }
         return base_t::_numKeys;
       }
+protected:
+    map_ptr_t getSharedMap() {
+        // lazy initialization
+        if(!base_t::_map) {
+            base_t::_map = std::make_shared<map_t>();
+        }
+        return base_t::_map;
+    }
 };
 
 // container must support concurrent insertion
@@ -90,7 +114,7 @@ public:
         base_t::_dirty = true;
         size_t fieldSize = base_t::_fields.size();
         size_t tableSize = base_t::_table->size();
-        typename base_t::map_ptr_t map = base_t::getMap();
+        typename base_t::map_ptr_t map = base_t::getSharedMap();
         for (pos_t row = 0; row < tableSize; ++row) {
             key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
             map->insert(typename map_t::value_type(key, row + _rowOffset));

@@ -8,6 +8,9 @@
 namespace hyrise {
 namespace access {
 
+
+// IMPORTANT: Is just a prototype for performance evaluation -- only SUM on Int-Values supported yet
+
 // does not build a full hashtable! but instead a (partial when parallelized) aggregate result
 // currently only support COUNT on 1 field
 class GroupByBuild : public ParallelizablePlanOperation {

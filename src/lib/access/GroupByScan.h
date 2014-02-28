@@ -64,7 +64,7 @@ private:
   // Default values is to use the valueID hashing
   bool _globalAggregation = false;
 
-  // there is no way to automatically determine if the input hash table is a shared one
+  // there is no way (yet) to automatically determine if the input hash table is a shared one
   // so we tell the groupby operation beforehand
   bool _sharedHashTable = false;
 };
