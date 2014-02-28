@@ -21,6 +21,7 @@ sloccount.sc
 
 benchmark_data
 *.swp
+tools/clang34*
 Hyrise.config
 Hyrise.creator
 Hyrise.files

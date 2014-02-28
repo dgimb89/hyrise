@@ -4,14 +4,14 @@
 
 #include "helper.h"
 
-#include <access.h>
-#include <helper/types.h>
-#include <storage.h>
-#include <access/MergeHashTables.h>
-
-#include <io.h>
-#include <io/shortcuts.h>
-#include <helper/PapiTracer.h>
+#include "access/SortScan.h"
+#include "access/GroupByScan.h"
+#include "access/HashBuild.h"
+#include "access/SharedHashBuild.h"
+#include "helper/types.h"
+#include "io/shortcuts.h"
+#include "storage/ColumnMetadata.h"
+#include "storage/Table.h"
 
 namespace hyrise {
 namespace access {
@@ -343,107 +343,6 @@ TEST_F(GroupByTests, group_by_scan_with_count) {
 
   ASSERT_TABLE_EQUAL(r2, ref2);
 
-}
-
-TEST_F(GroupByTests, group_by_scan_parallelized) {
-  hyrise::storage::atable_ptr_t t = io::Loader::shortcuts::load("test/10_30_group.tbl");
-
-  auto count = new CountAggregateFun(0);
-
-  hyrise::access::GroupByScan gs;
-  gs.addInput(t);
-  gs.addFunction(count);
-  gs.addField(0);
-
-  hyrise::access::HashBuild hb1;
-  hb1.addInput(t);
-  hb1.addField(0);
-  hb1.setKey("groupby");
-  hb1.setCount(2);
-  hb1.setPart(0);
-  hb1.execute();
-
-  hyrise::access::HashBuild hb2;
-  hb2.addInput(t);
-  hb2.addField(0);
-  hb2.setKey("groupby");
-  hb2.setCount(2);
-  hb2.setPart(1);
-  hb2.execute();
-
-  auto hash1 = std::dynamic_pointer_cast<const storage::SingleAggregateHashTable >(hb1.getResultHashTable());
-  auto hash2 = std::dynamic_pointer_cast<const storage::SingleAggregateHashTable >(hb2.getResultHashTable());
-
-  hyrise::access::MergeHashTables mht;
-  mht.addInput(hash1);
-  mht.addInput(hash2);
-  mht.setKey("groupby");
-
-  auto group_map = mht.execute()->getResultHashTable();
-  gs.addInput(group_map);
-
-  const auto& result = gs.execute()->getResultTable();
-  const auto& reference = io::Loader::shortcuts::load("test/reference/group_by_scan_with_count.tbl");
-
-  SortScan so;
-  so.addInput(result);
-  so.setSortField(0);
-  const auto& r2 = so.execute()->getResultTable();
-
-  SortScan so2;
-  so2.addInput(reference);
-  so2.setSortField(0);
-  const auto& ref2 = so2.execute()->getResultTable();
-
-  ASSERT_TABLE_EQUAL(r2, ref2);
-
-}
-
-TEST_F(GroupByTests, group_by_scan_parallelized_shared) {
-    hyrise::storage::atable_ptr_t t = io::Loader::shortcuts::load("test/10_30_group.tbl");
-
-    auto count = new CountAggregateFun(0);
-    auto map = std::make_shared<storage::shared_aggregate_single_hash_map_t>();
-
-    hyrise::access::GroupByScan gs;
-    gs.addInput(t);
-    gs.addFunction(count);
-    gs.addField(0);
-
-    hyrise::access::SharedHashBuild hb1;
-    hb1.addInput(t);
-    hb1.addField(0);
-    hb1.setCount(2);
-    hb1.setPart(0);
-    hb1.setMap<storage::shared_aggregate_single_hash_map_t, storage::aggregate_single_key_t>(map);
-    hb1.execute();
-
-    hyrise::access::SharedHashBuild hb2;
-    hb2.addInput(t);
-    hb2.addField(0);
-    hb2.setCount(2);
-    hb2.setPart(1);
-    hb2.setMap<storage::shared_aggregate_single_hash_map_t, storage::aggregate_single_key_t>(map);
-    hb2.execute();
-
-    gs.hashTableInputIsShared(true);
-    // hash table is shared; so we can take the result of any SharedHashBuild
-    gs.addInput(hb1.getResultHashTable());
-
-    const auto& result = gs.execute()->getResultTable();
-    const auto& reference = io::Loader::shortcuts::load("test/reference/group_by_scan_with_count.tbl");
-
-    SortScan so;
-    so.addInput(result);
-    so.setSortField(0);
-    const auto& r2 = so.execute()->getResultTable();
-
-    SortScan so2;
-    so2.addInput(reference);
-    so2.setSortField(0);
-    const auto& ref2 = so2.execute()->getResultTable();
-
-    ASSERT_TABLE_EQUAL(r2, ref2);
 }
 
 TEST_F(GroupByTests, group_by_scan_with_sum) {
@@ -814,7 +713,6 @@ TEST_F(GroupByTests, groupby_on_empty_table) {
   EXPECT_NO_THROW(result = gs.execute()->getResultTable());
   EXPECT_EQ(0u, result->size());
 }
-
 
 }
 }
