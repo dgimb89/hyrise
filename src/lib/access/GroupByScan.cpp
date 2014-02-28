@@ -9,6 +9,7 @@
 #include "storage/PointerCalculator.h"
 #include "storage/OrderIndifferentDictionary.h"
 #include "storage/meta_storage.h"
+#include "storage/storage_types.h"
 
 namespace hyrise {
 namespace storage {
@@ -75,21 +76,21 @@ void GroupByScan::executePlanOperation() {
   if ((_field_definition.size() != 0) && (input.numberOfHashTables() >= 1)) {
     if (_globalAggregation) {
       if (_field_definition.size() == 1) {
-        return executeGroupBy<SingleJoinHashTable, join_single_hash_map_t, join_single_key_t>();
+        return executeGroupBy<storage::SingleJoinHashTable, storage::join_single_hash_map_t, storage::join_single_key_t>();
       } else {
-        return executeGroupBy<JoinHashTable, join_hash_map_t, join_key_t>();
+        return executeGroupBy<storage::JoinHashTable, storage::join_hash_map_t, storage::join_key_t>();
       }
     }
     if (_field_definition.size() == 1) {
         if(_sharedHashTable)
-            return executeGroupBy<SingleAggregateSharedHashTableBase, tbb_aggregate_single_hash_map_t, aggregate_single_key_t>();
+            return executeGroupBy<storage::SingleAggregateSharedHashTableBase, storage::shared_aggregate_single_hash_map_t, storage::aggregate_single_key_t>();
         else
-            return executeGroupBy<SingleAggregateHashTable, aggregate_single_hash_map_t, aggregate_single_key_t>();
+            return executeGroupBy<storage::SingleAggregateHashTable, storage::aggregate_single_hash_map_t, storage::aggregate_single_key_t>();
     } else {
         if(_sharedHashTable)
-            return executeGroupBy<AggregateSharedHashTableBase, tbb_aggregate_hash_map_t, aggregate_key_t>();
+            return executeGroupBy<storage::AggregateSharedHashTableBase, storage::shared_aggregate_hash_map_t, storage::aggregate_key_t>();
         else
-            return executeGroupBy<AggregateHashTable, aggregate_hash_map_t, aggregate_key_t>();
+            return executeGroupBy<storage::AggregateHashTable, storage::aggregate_hash_map_t, storage::aggregate_key_t>();
     }
   } else {
     auto resultTab = createResultTableLayout();
@@ -139,21 +140,16 @@ const std::string GroupByScan::vname() {
 }
 
 storage::atable_ptr_t GroupByScan::createResultTableLayout() {
-  metadata_list  metadata;
-  std::vector<AbstractTable::SharedDictionaryPtr> dictionaries;
+  storage::metadata_list  metadata;
+  std::vector<storage::AbstractTable::SharedDictionaryPtr> dictionaries;
   //creating fields from grouping fields
   storage::atable_ptr_t group_tab = getInputTable(0)->copy_structure_modifiable(&_field_definition);
   //creating fields from aggregate functions
   for (const auto & fun: _aggregate_functions) {
-    ColumnMetadata *m = new ColumnMetadata(fun->columnName(), fun->getType());
-    metadata.push_back(m);
-    dictionaries.push_back(storage::makeDictionary<OrderIndifferentDictionary>(fun->getType()));
+    metadata.emplace_back(fun->columnName(), types::getUnorderedType(fun->getType()));
+    dictionaries.push_back(storage::makeDictionary(metadata.back()));
   }
-  storage::atable_ptr_t agg_tab = std::make_shared<Table>(&metadata, &dictionaries, 0, false);
-
-  //Clean the metadata
-  for (auto e : metadata)
-    delete e;
+  storage::atable_ptr_t agg_tab = std::make_shared<storage::Table>(&metadata, &dictionaries, 0, false);
 
   std::vector<storage::atable_ptr_t> vc;
   if (_field_definition.size() == 0 && _aggregate_functions.size() != 0) {
@@ -169,7 +165,11 @@ storage::atable_ptr_t GroupByScan::createResultTableLayout() {
 }
 
 void GroupByScan::addFunction(AggregateFun *fun) {
-  this->_aggregate_functions.push_back(fun);
+    this->_aggregate_functions.push_back(fun);
+}
+
+void GroupByScan::hashTableInputIsShared(bool sharedHashTable) {
+    _sharedHashTable = sharedHashTable;
 }
 
 void GroupByScan::splitInput() {
@@ -179,14 +179,14 @@ void GroupByScan::splitInput() {
 
     if ((_indexed_field_definition.size() + _named_field_definition.size()) == 1)
         if(_sharedHashTable)
-            input.setHash(std::dynamic_pointer_cast<const SingleAggregateSharedHashTableBase>(hashTables[0])->view(r.first, r.second), 0);
+            input.setHash(std::dynamic_pointer_cast<const storage::SingleAggregateSharedHashTableBase>(hashTables[0])->view(r.first, r.second), 0);
         else
-            input.setHash(std::dynamic_pointer_cast<const SingleAggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
+            input.setHash(std::dynamic_pointer_cast<const storage::SingleAggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
     else
         if(_sharedHashTable)
-            input.setHash(std::dynamic_pointer_cast<const AggregateSharedHashTableBase>(hashTables[0])->view(r.first, r.second), 0);
+            input.setHash(std::dynamic_pointer_cast<const storage::AggregateSharedHashTableBase>(hashTables[0])->view(r.first, r.second), 0);
         else
-            input.setHash(std::dynamic_pointer_cast<const AggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
+            input.setHash(std::dynamic_pointer_cast<const storage::AggregateHashTable>(hashTables[0])->view(r.first, r.second), 0);
   } else if(_count > 0 && hashTables.empty()){
     ParallelizablePlanOperation::splitInput();
   }
@@ -213,6 +213,7 @@ void GroupByScan::executeGroupBy() {
   auto groupResults = getInputHashTable();
   // Allocate some memory for the result tab and resize the table
   resultTab->resize(groupResults->numKeys());
+
   pos_t row = 0;
   typename HashTableType::map_const_iterator_t it1, it2, end;
   // set iterators: in the sequential case, getInputTable() returns an AggregateHashTable, in the parallel case a HashTableView<>
@@ -223,11 +224,11 @@ void GroupByScan::executeGroupBy() {
     end = aggregateHashTable->getMapEnd();
   } else {
     if(_sharedHashTable) {
-        auto hashTableView = std::dynamic_pointer_cast<const HashTableView<MapType, KeyType, SharedHashTableBase> >(groupResults);
+        auto hashTableView = std::dynamic_pointer_cast<const storage::HashTableView<MapType, KeyType, storage::SharedHashTableBase> >(groupResults);
         it1 = hashTableView->getMapBegin();
         end = hashTableView->getMapEnd();
     } else {
-        auto hashTableView = std::dynamic_pointer_cast<const HashTableView<MapType, KeyType, HashTable> >(groupResults);
+        auto hashTableView = std::dynamic_pointer_cast<const storage::HashTableView<MapType, KeyType, storage::HashTable> >(groupResults);
         it1 = hashTableView->getMapBegin();
         end = hashTableView->getMapEnd();
     }

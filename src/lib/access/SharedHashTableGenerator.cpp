@@ -14,7 +14,7 @@ namespace {
 void SharedHashTableGenerator::executePlanOperation() {
     std::vector<std::shared_ptr<SharedHashBuild>> children;
     std::vector<std::shared_ptr<Task>> successors;
-    auto scheduler = SharedScheduler::getInstance().getScheduler();
+    auto scheduler = taskscheduler::SharedScheduler::getInstance().getScheduler();
 
     {
         std::lock_guard<decltype(_observerMutex)> lk(_observerMutex);
@@ -48,18 +48,18 @@ void SharedHashTableGenerator::executePlanOperation() {
 
     if (_key == "groupby") {
         if (_field_definition.size() == 1) {
-            auto map = std::make_shared<tbb_aggregate_single_hash_map_t>();
+            auto map = std::make_shared<storage::shared_aggregate_single_hash_map_t>();
             map->rehash(getInputTable()->size());
             for (auto child : children) {
-                addSharedHashtableResult(child->setMap<tbb_aggregate_single_hash_map_t, aggregate_single_key_t>(map));
+                addSharedHashtableResult(child->setMap<storage::shared_aggregate_single_hash_map_t, storage::aggregate_single_key_t>(map));
                 scheduler->schedule(child);
             }
         }
         else {
-            auto map = std::make_shared<tbb_aggregate_hash_map_t>();
+            auto map = std::make_shared<storage::shared_aggregate_hash_map_t>();
             map->rehash(getInputTable()->size());
             for (auto child : children) {
-                addSharedHashtableResult(child->setMap<tbb_aggregate_hash_map_t, aggregate_key_t>(map));
+                addSharedHashtableResult(child->setMap<storage::shared_aggregate_hash_map_t, storage::aggregate_key_t>(map));
                 scheduler->schedule(child);
             }
         }

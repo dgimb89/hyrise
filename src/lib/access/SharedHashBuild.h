@@ -16,7 +16,7 @@ public:
     virtual const std::string vname();
 
     template <typename MAP, typename KEY>
-    std::shared_ptr<AbstractHashTable> setMap(std::shared_ptr<MAP> map) {
+    std::shared_ptr<storage::AbstractHashTable> setMap(std::shared_ptr<MAP> map) {
         // refresh input here as row_offset is needed here already
         refreshInput();
 
@@ -28,31 +28,31 @@ public:
             row_offset = input->getStart();
 
         computeDeferredIndexes();
-        auto hashTable = std::make_shared<SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+        auto hashTable = std::make_shared<storage::SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
         addResult(hashTable);
         setHashTable(hashTable);
         return hashTable;
     }
 
     template <typename MAP, typename KEY>
-    std::shared_ptr<AbstractHashTable> setMap(std::shared_ptr<MAP> map, const std::string& aggrFuncType) {
+    std::shared_ptr<storage::AbstractHashTable> setMap(std::shared_ptr<MAP> map, const std::string& aggrFuncType) {
         // map / key type tuple already determinated in SharedHashGenerator, take given one
-        std::shared_ptr<AbstractHashTable> hashTable;
+        std::shared_ptr<storage::AbstractHashTable> hashTable;
         if(aggrFuncType == "SUM") {
-            hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY, AtomicSumAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
+            hashTable = std::make_shared<storage::AtomicSharedHashTable<MAP,KEY, storage::AtomicSumAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
         } else if(aggrFuncType == "COUNT") {
-            hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY, AtomicCountAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
+            hashTable = std::make_shared<storage::AtomicSharedHashTable<MAP,KEY, storage::AtomicCountAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
         } else if(aggrFuncType == "MIN") {
-            hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY, AtomicMinAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
+            hashTable = std::make_shared<storage::AtomicSharedHashTable<MAP,KEY, storage::AtomicMinAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
         } else if(aggrFuncType == "MAX") {
-            hashTable = std::make_shared<AtomicSharedHashTable<MAP,KEY, AtomicMaxAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
+            hashTable = std::make_shared<storage::AtomicSharedHashTable<MAP,KEY, storage::AtomicMaxAggregationFunc> >(getInputTable(), _field_definition, map, _aggrFuncField);
         }
 
         // aggrFuncType not valid
         if(!hashTable) throw std::runtime_error("Aggregation Function Type in PlanOperation SharedHashBuild not supported; aggrFuncType: " + aggrFuncType);
 
         addResult(hashTable);
-        setHashTable(std::dynamic_pointer_cast<AbstractSharedHashTable>(hashTable));
+        setHashTable(std::dynamic_pointer_cast<storage::AbstractSharedHashTable>(hashTable));
         return hashTable;
     }
 
@@ -60,11 +60,11 @@ public:
     static std::shared_ptr<PlanOperation> parse(const Json::Value& data);
 
 protected:
-    void setHashTable(std::shared_ptr<AbstractSharedHashTable> hashTable);
+    void setHashTable(std::shared_ptr<storage::AbstractSharedHashTable> hashTable);
     field_t _aggrFuncField;
 
 private:
-    std::shared_ptr<AbstractSharedHashTable> _hashTable = nullptr;
+    std::shared_ptr<storage::AbstractSharedHashTable> _hashTable = nullptr;
 };
 
 }

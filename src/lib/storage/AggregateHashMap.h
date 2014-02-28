@@ -1,10 +1,13 @@
-#ifndef SRC_LIB_STORAGE_AGGREGATEHASHMAP_H
-#define SRC_LIB_STORAGE_AGGREGATEHASHMAP_H
+#pragma once
 
 #include "storage/HashTable.h"
 #include "helper/types.h"
 #include <map>
 #include <unordered_map>
+
+
+namespace hyrise {
+namespace storage {
 
 // forward declaration
 template <class KEY, class MAPPED, class HASHER, class AGGR_FUN>
@@ -128,4 +131,4 @@ struct SumAggregationFunc {
     }
 };
 
-#endif // SRC_LIB_STORAGE_AGGREGATEHASHMAP_H
+} } // namespace hyrise::storage

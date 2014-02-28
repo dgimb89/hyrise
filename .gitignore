@@ -8,6 +8,7 @@ doc_env/*
 *.DS_Store
 *.log
 *.pyc
+*.gprof
 
 settings.mk
 mysql.mk
@@ -19,7 +20,7 @@ coverage.xml
 sloccount.sc
 
 benchmark_data
-
+*.swp
 Hyrise.config
 Hyrise.creator
 Hyrise.files

@@ -33,7 +33,7 @@ std::shared_ptr<PlanOperation> SharedHashBuild::parse(const Json::Value &data) {
     return instance;
 }
 
-void SharedHashBuild::setHashTable(std::shared_ptr<AbstractSharedHashTable> hashTable) {
+void SharedHashBuild::setHashTable(std::shared_ptr<storage::AbstractSharedHashTable> hashTable) {
     _hashTable = hashTable;
 }
 

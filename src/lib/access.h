@@ -7,6 +7,7 @@
 #include <access/ExpressionScan.h>
 #include <access/GroupByScan.h>
 #include <access/HashBuild.h>
+#include <access/SharedHashBuild.h>
 #include <access/HashJoinProbe.h>
 #include <access/HashValueJoin.hpp>
 #include <access/InsertScan.h>

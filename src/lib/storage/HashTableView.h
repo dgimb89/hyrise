@@ -1,7 +1,9 @@
-#ifndef SRC_LIB_STORAGE_HASHTABLEVIEW_H
-#define SRC_LIB_STORAGE_HASHTABLEVIEW_H
+#pragma once
 
 #include "storage/AbstractHashTable.h"
+
+namespace hyrise {
+namespace storage {
 
 /// Maps table cells' hashed values of arbitrary columns to their rows.
 /// This subclass maps only a range of key value pairs of its underlying
@@ -129,4 +131,4 @@ public:
   }
 };
 
-#endif // !SRC_LIB_STORAGE_HASHTABLEVIEW_H
+} } // namespace hyrise::storage

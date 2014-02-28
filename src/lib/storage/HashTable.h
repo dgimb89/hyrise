@@ -1,8 +1,8 @@
 // Copyright (c) 2012 Hasso-Plattner-Institut fuer Softwaresystemtechnik GmbH. All rights reserved.
-#ifndef SRC_LIB_STORAGE_HASHTABLE_H_
-#define SRC_LIB_STORAGE_HASHTABLE_H_
+#pragma once
 
 #include <atomic>
+#include <algorithm>
 #include <set>
 #include <unordered_map>
 #include <memory>
@@ -16,6 +16,10 @@
 #include "storage/storage_types.h"
 #include "storage/HashTableView.h"
 
+
+namespace hyrise {
+namespace storage {
+
 // Group of value_ids as key to an unordered map
 typedef std::vector<value_id_t> aggregate_key_t;
 // Group of hashed values as key to an unordered map
@@ -26,22 +30,22 @@ typedef value_id_t aggregate_single_key_t;
 // Single Hashed Value
 typedef size_t join_single_key_t;
 
-size_t hash_value(const hyrise::storage::c_atable_ptr_t &source, const size_t &f, const ValueId &vid);
+size_t hash_value(const c_atable_ptr_t &source, const size_t &f, const ValueId &vid);
 
 template <typename HashResult>
-inline typename HashResult::value_type extract(const hyrise::storage::c_atable_ptr_t &table,
+inline typename HashResult::value_type extract(const c_atable_ptr_t &table,
     const size_t &field,
     const ValueId &vid);
 
 template <>
-inline typename join_key_t::value_type extract<join_key_t>(const hyrise::storage::c_atable_ptr_t &table,
+inline typename join_key_t::value_type extract<join_key_t>(const c_atable_ptr_t &table,
     const size_t &field,
     const ValueId &vid) {
   return hash_value(table, field, vid);
 }
 
 template <>
-inline typename aggregate_key_t::value_type extract<aggregate_key_t>(const hyrise::storage::c_atable_ptr_t &table,
+inline typename aggregate_key_t::value_type extract<aggregate_key_t>(const c_atable_ptr_t &table,
     const size_t &field,
     const ValueId &vid) {
   return vid.valueId;
@@ -49,19 +53,19 @@ inline typename aggregate_key_t::value_type extract<aggregate_key_t>(const hyris
 
 // Helper Functions for Single Values
 template<typename HashResult>
-inline HashResult extractSingle(const hyrise::storage::c_atable_ptr_t &table,
+inline HashResult extractSingle(const c_atable_ptr_t &table,
     const size_t &field,
     const ValueId &vid);
 
 template <>
-inline join_single_key_t extractSingle<join_single_key_t>(const hyrise::storage::c_atable_ptr_t &table,
+inline join_single_key_t extractSingle<join_single_key_t>(const c_atable_ptr_t &table,
     const size_t &field,
     const ValueId &vid) {
   return hash_value(table, field, vid);
 }
 
 template <>
-inline aggregate_single_key_t extractSingle<aggregate_single_key_t>(const hyrise::storage::c_atable_ptr_t &table,
+inline aggregate_single_key_t extractSingle<aggregate_single_key_t>(const c_atable_ptr_t &table,
     const size_t &field,
     const ValueId &vid) {
   return vid.valueId;
@@ -83,7 +87,7 @@ public:
     return seed;
   }
 
-  static T getGroupKey(const hyrise::storage::c_atable_ptr_t &table,
+  static T getGroupKey(const c_atable_ptr_t &table,
                        const field_list_t &columns,
                        const size_t fieldCount,
                        const pos_t row) {
@@ -103,7 +107,7 @@ public:
     return std::hash<size_t>()(key);
   }
 
-  static T getGroupKey(const hyrise::storage::c_atable_ptr_t &table,
+  static T getGroupKey(const c_atable_ptr_t &table,
                        const field_list_t &columns,
                        const size_t fieldCount,
                        const pos_t row){
@@ -182,7 +186,7 @@ public:
 
   // Hash given table's columns directly into the new HashTable
   // row_offset is used if t is a TableRangeView, so that the HashTable can build the pos_lists based on the row numbers of the original table
-  HashTable(hyrise::storage::c_atable_ptr_t t, const field_list_t &f, size_t row_offset = 0)
+  HashTable(c_atable_ptr_t t, const field_list_t &f, size_t row_offset = 0)
       : base_t(t, f) {
     populate_map(row_offset);
   }
@@ -220,7 +224,7 @@ public:
     }
 
   /// Get positions for values in the table cells of given row and columns.
-  virtual pos_list_t get(const hyrise::storage::c_atable_ptr_t& table,
+  virtual pos_list_t get(const c_atable_ptr_t& table,
                          const field_list_t &columns,
                          const pos_t row) const {
       key_t key = MAP::hasher::getGroupKey(table, columns, columns.size(), row);
@@ -249,4 +253,5 @@ public:
     }
 };
 
-#endif  // SRC_LIB_STORAGE_HASHTABLE_H_
+} } // namespace hyrise::storage
+

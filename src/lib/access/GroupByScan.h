@@ -45,6 +45,7 @@ public:
   storage::atable_ptr_t createResultTableLayout();
   /// adds a given AggregateFunction to group by scan instance SUM or COUNT
   void addFunction(AggregateFun *fun);
+  void hashTableInputIsShared(bool sharedHashTable);
 
 private:
   void splitInput();

@@ -1,6 +1,5 @@
 // Copyright (c) 2012 Hasso-Plattner-Institut fuer Softwaresystemtechnik GmbH. All rights reserved.
-#ifndef SRC_LIB_STORAGE_ABSTRACTHASHTABLE_H_
-#define SRC_LIB_STORAGE_ABSTRACTHASHTABLE_H_
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -11,6 +10,9 @@
 #include "helper/types.h"
 #include "storage/AbstractResource.h"
 #include "storage/storage_types.h"
+
+namespace hyrise {
+namespace storage {
 
 class AbstractTable;
 
@@ -79,5 +81,5 @@ public:
     }
 };
 
-#endif  // SRC_LIB_STORAGE_ABSTRACTHASHTABLE_H_
+} } // namespace hyrise::storage
 

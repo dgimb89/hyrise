@@ -1,8 +1,15 @@
-#ifndef SRC_LIB_STORAGE_SHAREDHASHTABLE_H
-#define SRC_LIB_STORAGE_SHAREDHASHTABLE_H
+#pragma once
 
 #include "storage/HashTable.h"
-#include <tbb/concurrent_unordered_map.h>
+
+#ifdef HYRISE_USE_FOLLY
+    #include <folly/AtomicHashMap.h>
+#else
+    #include <tbb/concurrent_unordered_map.h>
+#endif
+
+namespace hyrise {
+namespace storage {
 
 template <typename R>
 class atomic_aggregate_value_t : public std::atomic<R> {
@@ -18,15 +25,22 @@ template<class MAP, class KEY> class SharedHashTableBase;
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashTable;
 
-// Multi Keys
-typedef tbb::concurrent_unordered_multimap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > tbb_aggregate_hash_map_t;
-typedef tbb::concurrent_unordered_multimap<aggregate_key_t, atomic_aggregate_value_t<value_id_t>, GroupKeyHash<aggregate_key_t> > tbb_value_hash_map_t;
-// Single Keys
-typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > tbb_aggregate_single_hash_map_t;
-typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, atomic_aggregate_value_t<value_id_t>, SingleGroupKeyHash<aggregate_single_key_t> > tbb_value_single_hash_map_t;
 
-typedef SharedHashTableBase<tbb_aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateSharedHashTableBase;
-typedef SharedHashTableBase<tbb_aggregate_hash_map_t, aggregate_key_t> AggregateSharedHashTableBase;
+#ifdef HYRISE_USE_FOLLY
+    // Multi Keys
+    typedef folly::AtomicHashMap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > shared_aggregate_hash_map_t;
+    // Single Keys
+    typedef folly::AtomicHashMap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > shared_aggregate_single_hash_map_t;
+#else
+    // Multi Keys
+    typedef tbb::concurrent_unordered_multimap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > shared_aggregate_hash_map_t;
+    // Single Keys
+    typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > shared_aggregate_single_hash_map_t;
+#endif
+
+typedef SharedHashTableBase<shared_aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateSharedHashTableBase;
+typedef SharedHashTableBase<shared_aggregate_hash_map_t, aggregate_key_t> AggregateSharedHashTableBase;
+
 
 class AbstractSharedHashTable {
 public:
@@ -261,4 +275,4 @@ struct AtomicMinAggregationFunc {
     }
 };
 
-#endif // SRC_LIB_STORAGE_SHAREDHASHTABLE_H
+} } // namespace hyrise::storage

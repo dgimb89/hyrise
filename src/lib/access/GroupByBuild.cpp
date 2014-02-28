@@ -30,9 +30,9 @@ void GroupByBuild::setAggrFunField(field_t aggrFunField) {
 
 void GroupByBuild::executePlanOperation() {
     if (_field_definition.size() == 1)
-        addResult(std::make_shared<SingleKeyAggregateHashMap<hyrise_int_t, SumAggregationFunc> >(getInputTable(), _field_definition, _aggrFunField));
+        addResult(std::make_shared<storage::SingleKeyAggregateHashMap<hyrise_int_t, storage::SumAggregationFunc> >(getInputTable(), _field_definition, _aggrFunField));
       else
-        addResult(std::make_shared<MultiKeyAggregateHashMap<hyrise_int_t, SumAggregationFunc> >(getInputTable(), _field_definition, _aggrFunField));
+        addResult(std::make_shared<storage::MultiKeyAggregateHashMap<hyrise_int_t, storage::SumAggregationFunc> >(getInputTable(), _field_definition, _aggrFunField));
 
 }
 
