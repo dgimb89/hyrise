@@ -1,5 +1,4 @@
-#ifndef SRC_LIB_ACCESS_SHAREDHASHBUILD_H_
-#define SRC_LIB_ACCESS_SHAREDHASHBUILD_H_
+#pragma once
 
 #include "access/HashBuild.h"
 #include "storage/SharedHashTable.h"
@@ -57,6 +56,10 @@ public:
     }
 
     void setAggregationFunctionField(field_t aggrFuncField);
+
+    /// Do not use SharedHashBuild via JSON Query! Use SharedHashTableGenerator instead
+    /// fields in integer-list notation
+    /// make sure to call setMap<...> method before the operation is executed
     static std::shared_ptr<PlanOperation> parse(const Json::Value& data);
 
 protected:
@@ -69,5 +72,3 @@ private:
 
 }
 }
-
-#endif // SRC_LIB_ACCESS_SHAREDHASHBUILD_H_l

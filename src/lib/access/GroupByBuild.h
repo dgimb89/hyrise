@@ -9,10 +9,10 @@ namespace hyrise {
 namespace access {
 
 
-// IMPORTANT: Is just a prototype for performance evaluation -- only SUM on Int-Values supported yet
-
-// does not build a full hashtable! but instead a (partial when parallelized) aggregate result
-// currently only support COUNT on 1 field
+/// IMPORTANT: Is just a prototype for performance evaluation -- only SUM on Int-Values supported yet
+/// does not build a full hashtable! but instead a aggregate result
+/// GroupByBuild optimizes the non-shared parallel groupby aggregation by only holding for aggregation necessary data in hashtable
+/// More performant than parallel GroupByScan
 class GroupByBuild : public ParallelizablePlanOperation {
 public:
   virtual void executePlanOperation();

@@ -1,5 +1,4 @@
-#ifndef SRC_LIB_ACCESS_SHAREDHASHTABLEGENERATOR_H
-#define SRC_LIB_ACCESS_SHAREDHASHTABLEGENERATOR_H
+#pragma once
 
 #include "access/SharedHashBuild.h"
 
@@ -16,6 +15,31 @@ public:
 
     void setKey(const std::string &key);
 
+    /// Reacts to
+    /// fields in either integer-list notation or std::string-list notation
+    /// When given to a GroupByScan make sure to set the sharedHT option to true
+    /// Number of spawned tasks can be set by "numCores"
+    /// {
+    ///     "operators": {
+    ///         "0": {
+    ///              "type": "TableLoad",
+    ///              "table": "table1",
+    ///              "filename": "..."
+    ///         },
+    ///         "1": {
+    ///             "type": "SharedHashTableGenerator",
+    ///             "numCores": 4,
+    ///             "fields": ["employee_company_id"],
+    ///             "key": "groupby"
+    ///         },
+    ///          "2": {
+    ///              "type": "GroupByScan",
+    ///              "fields": [1],
+    ///              "sharedHT": true
+    ///          }
+    ///      },
+    ///      "edges": [["0", "1"], ["0", "2"], ["1", "2"]]
+    ///  }
     static std::shared_ptr<PlanOperation> parse(const Json::Value &data);
 
 protected:
@@ -27,5 +51,3 @@ private:
 
 }
 }
-
-#endif // SRC_LIB_ACCESS_SHAREDHASHTABLEGENERATOR_H
