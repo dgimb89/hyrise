@@ -27,7 +27,12 @@ public:
             row_offset = input->getStart();
 
         computeDeferredIndexes();
-        auto hashTable = std::make_shared<storage::SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+
+        #ifdef HYRISE_USE_FOLLY
+            auto hashTable = std::make_shared<storage::AtomicSharedHashTable<MAP,KEY, storage::AtomicCountAggregationFunc> >(getInputTable(), _field_definition, map, 0);
+        #else
+            auto hashTable = std::make_shared<storage::SharedHashTable<MAP,KEY> >(getInputTable(), _field_definition, map, row_offset);
+        #endif
         addResult(hashTable);
         setHashTable(hashTable);
         return hashTable;

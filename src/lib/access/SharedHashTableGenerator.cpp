@@ -48,16 +48,24 @@ void SharedHashTableGenerator::executePlanOperation() {
 
     if (_key == "groupby") {
         if (_field_definition.size() == 1) {
-            auto map = std::make_shared<storage::shared_aggregate_single_hash_map_t>();
-            map->rehash(getInputTable()->size());
+            #ifdef HYRISE_USE_FOLLY
+                std::shared_ptr<storage::shared_aggregate_single_hash_map_t> map(folly::make_unique<storage::shared_aggregate_single_hash_map_t>(50000000));
+            #else
+                auto map = std::make_shared<storage::shared_aggregate_single_hash_map_t>();
+            #endif
+
             for (auto child : children) {
                 addSharedHashtableResult(child->setMap<storage::shared_aggregate_single_hash_map_t, storage::aggregate_single_key_t>(map));
                 scheduler->schedule(child);
             }
         }
         else {
-            auto map = std::make_shared<storage::shared_aggregate_hash_map_t>();
-            map->rehash(getInputTable()->size());
+           #ifdef HYRISE_USE_FOLLY
+                std::shared_ptr<storage::shared_aggregate_hash_map_t> map(folly::make_unique<storage::shared_aggregate_hash_map_t>(50000000));
+            #else
+                auto map = std::make_shared<storage::shared_aggregate_hash_map_t>();
+            #endif
+
             for (auto child : children) {
                 addSharedHashtableResult(child->setMap<storage::shared_aggregate_hash_map_t, storage::aggregate_key_t>(map));
                 scheduler->schedule(child);

@@ -10,7 +10,7 @@ hyr-storage.libs := hwloc rt
 hyr-storage.deps := hyr-helper ftprinter cereal optional
 
 ifeq ($(WITH_FOLLY), 1)
-hyr-access.libs += folly
+hyr-access.libs += glog folly
 endif
 
 $(eval $(call library,hyr-storage))

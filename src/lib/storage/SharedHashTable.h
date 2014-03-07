@@ -1,9 +1,9 @@
 #pragma once
 
 #include "storage/HashTable.h"
-
 #ifdef HYRISE_USE_FOLLY
     #include <folly/AtomicHashMap.h>
+    #include <folly/Memory.h>
 #else
     #include <tbb/concurrent_unordered_map.h>
 #endif
@@ -25,12 +25,12 @@ template<class MAP, class KEY> class SharedHashTableBase;
 template<class MAP, class KEY> class SharedHashTable;
 template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashTable;
 
-
+/// folly usage is a prototype for performance measurements yet
 #ifdef HYRISE_USE_FOLLY
     // Multi Keys
-    typedef folly::AtomicHashMap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > shared_aggregate_hash_map_t;
+    typedef folly::AtomicHashMap<hyrise_int_t, hyrise_int_t> shared_aggregate_hash_map_t;
     // Single Keys
-    typedef folly::AtomicHashMap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > shared_aggregate_single_hash_map_t;
+    typedef folly::AtomicHashMap<hyrise_int_t, hyrise_int_t> shared_aggregate_single_hash_map_t;
 #else
     // Multi Keys
     typedef tbb::concurrent_unordered_multimap<aggregate_key_t, pos_t, GroupKeyHash<aggregate_key_t> > shared_aggregate_hash_map_t;
@@ -38,9 +38,8 @@ template<class MAP, class KEY, class AtomicAggregateFun> class AtomicSharedHashT
     typedef tbb::concurrent_unordered_multimap<aggregate_single_key_t, pos_t, SingleGroupKeyHash<aggregate_single_key_t> > shared_aggregate_single_hash_map_t;
 #endif
 
-typedef SharedHashTableBase<shared_aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateSharedHashTableBase;
 typedef SharedHashTableBase<shared_aggregate_hash_map_t, aggregate_key_t> AggregateSharedHashTableBase;
-
+typedef SharedHashTableBase<shared_aggregate_single_hash_map_t, aggregate_single_key_t> SingleAggregateSharedHashTableBase;
 
 class AbstractSharedHashTable {
 public:
@@ -81,9 +80,15 @@ public:
         return base_t::_map->size();
       }
 
+
     std::shared_ptr<HashTableView<MAP, KEY, SharedHashTableBase> > view(size_t first, size_t last) const {
-      return std::make_shared<HashTableView<MAP, KEY, SharedHashTableBase> >(this->shared_from_this(), first, last);
+        #ifdef HYRISE_USE_FOLLY
+            return nullptr;
+        #else
+            return std::make_shared<HashTableView<MAP, KEY, SharedHashTableBase> >(this->shared_from_this(), first, last);
+        #endif
     }
+
 
     virtual uint64_t numKeys() const {
         if (base_t::_dirty) {
@@ -101,9 +106,9 @@ public:
 protected:
     map_ptr_t getSharedMap() {
         // lazy initialization
-        if(!base_t::_map) {
+        /*if(!base_t::_map) {
             base_t::_map = std::make_shared<map_t>();
-        }
+        }*/
         return base_t::_map;
     }
 };
@@ -200,15 +205,16 @@ public:
         base_t::_dirty = true;
         size_t fieldSize = base_t::_fields.size();
         size_t tableSize = base_t::_table->size();
-        typename base_t::map_ptr_t map = base_t::getMap();
+        typename base_t::map_ptr_t map = base_t::getSharedMap();
         for (pos_t row = 0; row < tableSize; ++row) {
-            key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row);
-            value_id_t aggregateFuncValue = SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row);
-            auto elementPair = map->insert(typename map_t::value_type(key, atomic_aggregate_value_t<value_id_t>(AtomicAggregateFun::firstValue(aggregateFuncValue))));
-
+            //key_t key = MAP::hasher::getGroupKey(base_t::_table, base_t::_fields.front(), fieldSize, row);
+            //value_id_t aggregateFuncValue = SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, _aggrFuncFields, fieldSize, row);
+            //auto elementPair = map->insert(typename map_t::value_type(key, atomic_aggregate_value_t<value_id_t>(AtomicAggregateFun::firstValue(aggregateFuncValue))));
+            auto elementPair = map->insert(std::make_pair(SingleGroupKeyHash<aggregate_single_key_t>::getGroupKey(base_t::_table, base_t::_fields, fieldSize, row), 0));
             // if key was already present we have to update the value instead
             if(elementPair.second == false) {
-                AtomicAggregateFun::update(elementPair.first->second, aggregateFuncValue);
+                __sync_fetch_and_add(&elementPair.first->second, 1);
+                //AtomicAggregateFun::update(elementPair.first->second, aggregateFuncValue);
             }
         }
     }

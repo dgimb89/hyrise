@@ -25,6 +25,7 @@ TEST_F(HashBuildTests, basic_hash_build_for_groupby_test) {
 }
 
 TEST_F(HashBuildTests, basic_shared_hash_build_for_groupby_test) {
+#ifndef HYRISE_USE_FOLLY
   auto t = io::Loader::shortcuts::load("test/10_30_group.tbl");
 
   SharedHashBuild hb;
@@ -40,9 +41,11 @@ TEST_F(HashBuildTests, basic_shared_hash_build_for_groupby_test) {
 
   // has to be filled
   ASSERT_NE(result->size(), 0);
+#endif
 }
 
 TEST_F(HashBuildTests, parallelized_shared_hash_build_for_groupby_test) {
+#ifndef HYRISE_USE_FOLLY
   auto t = io::Loader::shortcuts::load("test/10_30_group.tbl");
 
   auto map1 = std::make_shared<storage::shared_aggregate_single_hash_map_t>();
@@ -77,6 +80,7 @@ TEST_F(HashBuildTests, parallelized_shared_hash_build_for_groupby_test) {
   ASSERT_NE(map2->size(), 0);
 
   ASSERT_EQ(map1->size(), map2->size());
+#endif
 }
 
 TEST_F(HashBuildTests, basic_hash_build_for_join_test) {
